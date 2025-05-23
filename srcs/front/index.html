@@ -1,3 +1,46 @@
-<h1>
-    hello world
-</h1>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pong game</title>
+</head>
+<body>
+    <h1>voici ici le meilleur pong du monde !!</h1>
+    <h2>le jeu est en cours de développement</h2>
+
+    <div>
+        <section>
+            <div><h3>comment jouer ?</h3></div>
+            <p>utiliser les flèches du clavier pour déplacer la raquette</p>
+            <p>le but est de marquer le plus de points possible</p>
+            <p>vous pouvez jouer seul ou à deux</p>
+            <p>pour jouer à deux, utilisez les touches A et D pour le joueur 1 et les flèches du clavier pour le joueur 2</p>
+            <p>le jeu se termine lorsque le joueur 1 ou le joueur 2 atteint 10 points</p>
+            <p>vous pouvez également jouer contre l'ordinateur</p>
+        </section>
+    </div>
+    <div>
+        <form>
+            <label>Entrez votre nom :</label>
+            <input name="name" type="text" id="name" placeholder="votre nom" required>
+            <select>
+                <option value="1">1 joueur</option>
+                <option value="2">2 joueurs</option>
+                <option value="3">contre l'ordinateur</option>
+            </select>
+        </form>
+    </div>
+    <section>
+        <div align=Center> 
+        <button id="start">
+            <a href="https://youtube.com">youtube</a>
+        </div>
+    </section>
+    <div align=Center>
+        <canvas id="pong" width="600" height="400" ></canvas>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
