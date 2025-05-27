@@ -1,8 +1,16 @@
-var message = "Hello World ";
-console.log(message);
-var text = document.createElement("h1");
-text.textContent = message;
-document.body.appendChild(text);
+var login = document.getElementById("button");
+var password = document.getElementById("password");
+var username = document.getElementById("username");
+var PASS_FIXE = '1234';
+login.addEventListener("click", function (e) {
+    e.preventDefault();
+    if (password.value === PASS_FIXE) {
+        console.log("Connexion réussie");
+    }
+    else {
+        console.log("Mot de passe incorrect");
+    }
+});
 var canvas = document.getElementById("pong");
 var ctx = canvas.getContext("2d");
 // Dessine un rectangle (raquette)
@@ -23,6 +31,7 @@ document.addEventListener("keydown", function (e) {
     if (e.key === "s")
         paddle1Y += 20;
 });
+document;
 // Boucle de jeu
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -39,9 +48,11 @@ function draw() {
     ballY += ballSpeedY;
     if (ballY < 0 || ballY > canvas.height) {
         ballSpeedY = -ballSpeedY;
+        ballSpeedY *= 1.12;
     }
     if (ballX < 10 && ballY > paddle1Y && ballY < paddle1Y + 50) {
         ballSpeedX = -ballSpeedX;
+        ballSpeedX *= 1.12;
     }
     if (ballX > 590 && ballY > paddle2Y && ballY < paddle2Y + 50) {
         ballSpeedX = -ballSpeedX;
@@ -49,9 +60,14 @@ function draw() {
     if (ballX < 0 || ballX > canvas.width) {
         ballY = 200;
         ballX = 300;
+        ballSpeedX = 3;
+        ballSpeedY = 1;
+        paddle1Y = 150;
+        paddle2Y = 150;
+        console.log("Resetting game");
     }
     if (paddle1Y <= 0) {
-        paddle1Y = 0;
+        paddle1Y = 0 + 40;
     }
     if (paddle1Y >= canvas.height) {
         paddle1Y = canvas.height + 50;

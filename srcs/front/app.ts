@@ -1,10 +1,21 @@
-let message: string = "Hello World ";
-console.log(message);
 
-let text = document.createElement("h1");
-text.textContent = message;
+const login = document.getElementById("button") as HTMLInputElement;
+const password = document.getElementById("password") as HTMLInputElement;
+const username = document.getElementById("username") as HTMLButtonElement;
 
-document.body.appendChild(text);
+const PASS_FIXE = '1234';
+
+login.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (password.value === PASS_FIXE) 
+    {
+        console.log("Connexion réussie");
+    }
+    else 
+    {
+        console.log("Mot de passe incorrect");
+    }
+});
 
 const canvas = document.getElementById("pong") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d");
@@ -44,9 +55,11 @@ function draw() {
     ballY += ballSpeedY;
     if (ballY < 0 || ballY > canvas.height) {
         ballSpeedY = -ballSpeedY;
+        ballSpeedY *= 1.12;
     }
     if (ballX < 10 && ballY > paddle1Y && ballY < paddle1Y + 50) {
         ballSpeedX = -ballSpeedX;
+        ballSpeedX *= 1.12;
     }
     if (ballX > 590 && ballY > paddle2Y && ballY < paddle2Y + 50) {
         ballSpeedX = -ballSpeedX;
@@ -55,11 +68,16 @@ function draw() {
     {
         ballY = 200;
         ballX = 300;
+        ballSpeedX = 3;
+        ballSpeedY = 1;
+        paddle1Y = 150;
+        paddle2Y = 150;
+        console.log("Resetting game");
     }
 
     if (paddle1Y <= 0)
     {
-        paddle1Y = 0;
+        paddle1Y = 0 + 40;
     }
     if (paddle1Y >= canvas.height)
     {
