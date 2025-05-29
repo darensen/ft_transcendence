@@ -1,19 +1,69 @@
 
+let registerForm = document.querySelector('#register-form') as HTMLFormElement;
+let loginForm = document.querySelector('#login-form') as HTMLFormElement;
+
+const showRegister = document.getElementById('show-register');
+showRegister?.addEventListener('click', (e) => {
+  e.preventDefault();
+  registerForm.classList.remove('hidden');
+  loginForm.classList.add('hidden');
+  console.log("Show register form");
+});
+
+const showLogin = document.getElementById('show-login');
+showLogin?.addEventListener('click', (e) => {
+  e.preventDefault();
+  registerForm.classList.add('hidden');
+  loginForm.classList.remove('hidden');
+  console.log("Show login form");
+});
+
 const login = document.getElementById("button") as HTMLInputElement;
 const password = document.getElementById("password") as HTMLInputElement;
 const username = document.getElementById("username") as HTMLButtonElement;
-
 const PASS_FIXE = '1234';
+
+const play = document.getElementById("play-button") as HTMLButtonElement;
 
 login.addEventListener("click", (e) => {
     e.preventDefault();
     if (password.value === PASS_FIXE) 
     {
         console.log("Connexion réussie");
+        play.classList.remove("hidden");
+        loginForm.classList.add("hidden");
+        registerForm.classList.add("hidden");
     }
     else 
     {
         console.log("Mot de passe incorrect");
+    }
+});
+
+const Inscription = document.getElementById("button2") as HTMLInputElement;
+const password2 = document.getElementById("password2") as HTMLInputElement;
+const username2 = document.getElementById("username2") as HTMLButtonElement;
+const email = document.getElementById("email") as HTMLInputElement;
+const namee = document.getElementById("name") as HTMLInputElement;
+Inscription.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (username2.value && password2.value && email.value && namee.value)
+    {
+        if (password2.value === PASS_FIXE)
+        {
+            console.log("Inscription réussie"); 
+            play.classList.remove("hidden");
+            registerForm.classList.add("hidden");
+            loginForm.classList.add("hidden");
+        }
+        else
+        {
+            console.log("Mot de passe incorrect");
+        }
+    }
+    else
+    {
+        console.log("Veuillez remplir tous les champs");
     }
 });
 
