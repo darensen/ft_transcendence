@@ -59,6 +59,7 @@ Inscription.addEventListener("click", (e) => {
             registerForm.classList.add("hidden");
             loginForm.classList.add("hidden");
             homePage.classList.remove("hidden");
+            page_ac.classList.remove("hidden");
             c_page.classList.add("hidden");            
         }
         else
@@ -98,6 +99,14 @@ homeSection?.addEventListener("click", (e) => {
     gameSection?.classList.add("hidden");
 });
 
+
+const playbouton = document.getElementById("play-button") as HTMLButtonElement;
+playbouton?.addEventListener("click", (e) => {
+    e.preventDefault(); // Empêche le scroll en haut de page
+    // Affiche la section Pong
+    gameSection?.classList.add("hidden");
+    page_ac?.classList.add("hidden");
+});
 
 const canvashome = document.getElementById("home-canvas") as HTMLCanvasElement;
 const ctxHome = canvashome.getContext("2d");
@@ -201,5 +210,6 @@ function draw() {
     }
     requestAnimationFrame(draw);
 }
+
 
 draw();
