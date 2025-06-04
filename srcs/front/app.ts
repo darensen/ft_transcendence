@@ -18,21 +18,24 @@ showLogin?.addEventListener('click', (e) => {
   console.log("Show login form");
 });
 
+const c_page = document.getElementById('c-page') as HTMLDivElement;
 const login = document.getElementById("button") as HTMLInputElement;
 const password = document.getElementById("password") as HTMLInputElement;
 const username = document.getElementById("username") as HTMLButtonElement;
 const PASS_FIXE = '1234';
 
-const play = document.getElementById("play-button") as HTMLButtonElement;
-
+const homePage = document.getElementById("home-page") as HTMLDivElement;
+const page_ac = document.getElementById("page-accueil") as HTMLDivElement;
 login.addEventListener("click", (e) => {
     e.preventDefault();
     if (password.value === PASS_FIXE) 
     {
         console.log("Connexion réussie");
-        play.classList.remove("hidden");
         loginForm.classList.add("hidden");
-        registerForm.classList.add("hidden");
+        registerForm.classList.add("hidden");  
+        homePage.classList.remove("hidden");
+        page_ac.classList.remove("hidden");
+        c_page.classList.add("hidden");
     }
     else 
     {
@@ -45,6 +48,7 @@ const password2 = document.getElementById("password2") as HTMLInputElement;
 const username2 = document.getElementById("username2") as HTMLButtonElement;
 const email = document.getElementById("email") as HTMLInputElement;
 const namee = document.getElementById("name") as HTMLInputElement;
+
 Inscription.addEventListener("click", (e) => {
     e.preventDefault();
     if (username2.value && password2.value && email.value && namee.value)
@@ -52,9 +56,10 @@ Inscription.addEventListener("click", (e) => {
         if (password2.value === PASS_FIXE)
         {
             console.log("Inscription réussie"); 
-            play.classList.remove("hidden");
             registerForm.classList.add("hidden");
             loginForm.classList.add("hidden");
+            homePage.classList.remove("hidden");
+            c_page.classList.add("hidden");            
         }
         else
         {
@@ -67,16 +72,77 @@ Inscription.addEventListener("click", (e) => {
     }
 });
 
+const pongLink = document.getElementById("pongg") as HTMLAnchorElement;
+const gameSection = document.getElementById("game"); 
+const homeSection = document.getElementById("accueil");
+
+const user_menu = document.getElementById("user-menu") as HTMLDivElement;
+const user_menu_button = document.getElementById("user-profile") as HTMLButtonElement;
+
+user_menu_button?.addEventListener("click", (e) => {
+    e.preventDefault();
+    user_menu.classList.toggle("hidden");
+});
+
+pongLink?.addEventListener("click", (e) => {
+    e.preventDefault(); // Empêche le scroll en haut de page
+    // Affiche la section Pong
+    gameSection?.classList.remove("hidden");
+    // Cache la page d'accueil
+    page_ac?.classList.add("hidden");
+});
+
+homeSection?.addEventListener("click", (e) => {
+    e.preventDefault(); // Empêche le scroll en haut de page
+    page_ac?.classList.remove("hidden");
+    gameSection?.classList.add("hidden");
+});
+
+
+const canvashome = document.getElementById("home-canvas") as HTMLCanvasElement;
+const ctxHome = canvashome.getContext("2d");
+// Dessin statique d'un pong sur la page d'accueil
+function drawHomePong() {
+    ctxHome.clearRect(0, 0, canvashome.width, canvashome.height);
+
+    ctxHome.save();
+    ctxHome.strokeStyle = "#10b981"; // couleur émeraude
+    ctxHome.setLineDash([10, 10]); // 10px trait, 10px espace
+    ctxHome.beginPath();
+    ctxHome.moveTo(canvashome.width / 2, 0);
+    ctxHome.lineTo(canvashome.width / 2, canvashome.height);
+    ctxHome.stroke();
+    ctxHome.setLineDash([]); // reset
+    ctxHome.restore();
+
+    // Raquette de gauche
+    ctxHome.fillStyle = "#10b981";
+    ctxHome.fillRect(20, 80, 10, 60);
+    ctxHome.fillRect(canvashome.width - 30, 10, 10, 60);
+
+    // Balle
+    ctxHome.beginPath();
+    ctxHome.arc(100, 100, 6, 0, Math.PI * 2);
+    ctxHome.fillStyle = "#10b981";
+    ctxHome.fill();
+}
+
+drawHomePong();
+
+
+
 const canvas = document.getElementById("pong") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d");
-// Dessine un rectangle (raquette)
-
+if (!ctx) {
+    throw new Error("Impossible de récupérer le contexte du canvas");
+}
+// Initialisation des variables
 let paddle1Y:number = 150;
-let paddle2Y = 150;
-let ballX = 300;
-let ballY = 200;
-let ballSpeedX = 3;
-let ballSpeedY = 1;
+let paddle2Y:number = 150;
+let ballX:number = 300;
+let ballY:number = 200;
+let ballSpeedX:number = 3;
+let ballSpeedY:number = 1;
 
 // Gestion du clavier
 document.addEventListener("keydown", (e) => {
