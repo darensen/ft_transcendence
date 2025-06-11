@@ -7,6 +7,7 @@
     <title>Shadow pong</title>
 </head>
 <body>
+    <!-- page de connexion -->
     <div id="c-page" class="relative w-screen h-screen flex justify-center items-center">
         <img src="../img/shadow-pong-bg2.png" alt="logo du site" class="w-screen h-screen top-0 left-0 absolute object-cover z-0">
         <form id="login-form" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col bg-black/60 backdrop-blur-sm rounded-lg border-2 border-solid border-emerald-200 p-8 w-96 z-10">
@@ -31,8 +32,9 @@
             </p>
         </form>
     </div>
+    <!-- page d'accueil nav bar section -->
     <div id="home-page" class="justify-center items-center w-screen h-screen bg-teal-900 hidden">
-        <nav class="w-full fixed top -0 z-20 bg-black/60 backdrop-blur-sm p-4 border-b-2 border-solid border-emerald-200">
+        <nav id="nav-bar" class="w-full fixed top -0 z-20 bg-black/60 backdrop-blur-sm p-4 border-b-2 border-solid border-emerald-200">
             <div class="flex items-center justify-between">
                 <img src="../img/logoo.png" alt="logo du site" class="h-16 mr-8">
                 <ol class="flex space-x-8 text-lg font-bold justify-center items-center">
@@ -45,26 +47,61 @@
                 </div>
             </div>
         </nav>
+        <!-- Menu utilisateur -->
         <div id="user-menu" class="absolute right-4 top-20 bg-black rounded-lg border-2 border-solid border-emerald-200 p-4 z-50 hidden">
             <ul class="text-white">
                 <li class="mb-2"><a href="#" id="profile-link" class="hover:text-emerald-200">Mon profil</a></li>
                 <li class="mb-2"><a href="#" id="settings-link" class="hover:text-emerald-200">Paramètres</a></li>
             </ul>
         </div>
-        <div id="game" class="flex flex-col items-center justify-center h-screen bg-black/60 backdrop-blur-sm hidden">
-            <h1 class="text-4xl text-emerald-200 mb-4">Bienvenue sur Pong</h1>
-            <button id="play-button" class="bg-emerald-700 text-white rounded p-2 font-bold hover:bg-emerald-500 border-2 border-solid border-emerald-200 w-48">Jouer</button>
-            <button id="logout-button" class="bg-emerald-700 text-white rounded p-2 font-bold hover:bg-emerald-500 border-2 border-solid border-emerald-200 w-48 mt-4">Tournois</button>
+        <!-- PAGE DE JEU -->
+        <div id="game" class="relative flex flex-col items-center justify-center h-screen hidden">
+            <img src="../img/shadow-pong-bg.png" alt="fond d'écran" class="w-screen h-screen top-0 absolute object-cover z-0">
+            <h1 class="text-4xl text-emerald-200 mb-4 z-0">Bienvenue sur Pong</h1>
+            <button id="play-button" class="bg-emerald-700 text-white rounded p-2 font-bold hover:bg-emerald-500 border-2 border-solid border-emerald-200 w-48 z-0">Jouer</button>
+            <button id="logout-button" class="bg-emerald-700 text-white rounded p-2 font-bold hover:bg-emerald-500 border-2 border-solid border-emerald-200 w-48 mt-4 z-0">Tournois</button>
         </div>
+        <!-- Canvas du PONG -->
+        <div id="pong-game" class="relative flex flex-col items-center justify-center h-screen hidden">
+            <canvas id="pong" width="800" height="400" class="border-2 border-solid border-emerald-200 z-10"></canvas>
+        </div>
+        <!-- page d'accueil -->
         <div id="page-accueil" class="relative flex flex-col items-center justify-center h-screen bg-black/60 backdrop-blur-sm hidden">
             <img src="../img/shadow-pong-bg.png" alt="fond d'écran" class="w-screen h-screen top-0 absolute object-cover z-0">
             <h1 class="text-5xl text-emerald-200 mb-8 z-10">HELLO USER BIENVENUE SUR PONG</h1>
             <canvas id="home-canvas" class="h-52 w-96 border-2 border-solid border-emerald-200 z-10"></canvas>
         </div>
-        <div id="game-container" class="w-full h-full flex justify-center items-center hidden">
-            <canvas id="pong" class="border-2 border-solid border-emerald-200"></canvas>
+            <!-- PAGE DE PROFIL UTILISATEUR -->
+        <div id="profile-page" class="hidden w-screen h-screen bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center absolute top-0 left-0 z-40">
+            <h2 class="text-4xl text-emerald-200 mb-6">Mon Profil</h2>
+            <div class="bg-black/80 p-6 rounded-lg border-2 border-emerald-200 w-96 flex flex-col items-center">
+                <img src="../img/user.webp" alt="photo de profil" class="w-24 h-24 rounded-full mb-4 object-cover" onerror="this.src='https://via.placeholder.com/96?text=U'">
+                <p class="text-white mb-2"><strong>Nom d'utilisateur :</strong> <span id="profile-username">Utilisateur</span></p>
+                <p class="text-white mb-2"><strong>Email :</strong> <span id="profile-email">exemple@email.com</span></p>
+                <p class="text-white mb-4"><strong>Nom :</strong> <span id="profile-name">Nom Prénom</span></p>
+                <button id="edit-profile-btn" class="text-white underline border-2 border-solid border-emerald-200 hover:text-emerald-200 form-button w-full">Modifier le profil</button>
+                <button id="close-profile-btn" class="text-white underline border-2 border-solid border-emerald-200 hover:text-emerald-200 form-button w-full mt-2">Fermer</button>
+            </div>
         </div>
-    </div>
+
+        <!-- PAGE DE PARAMÈTRES -->
+        <div id="settings-page" class="hidden w-screen h-screen bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center absolute top-0 left-0 z-40">
+            <h2 class="text-4xl text-emerald-200 mb-6">Paramètres</h2>
+            <div class="bg-black/80 p-6 rounded-lg border-2 border-emerald-200 w-96 flex flex-col">
+                <label class="text-white mb-2" for="language">Langue</label>
+                <select id="language" class="form-input text-black bg-white">
+                    <option value="fr">Français</option>
+                    <option value="en">English</option>
+                </select>
+                <label class="text-white mt-4 mb-2" for="darkmode">Thème</label>
+                <select id="darkmode" class="form-input text-black bg-white">
+                    <option value="dark">Sombre</option>
+                    <option value="light">Clair</option>
+                </select>
+                <button id="save-settings-btn" class="text-white form-button w-full mt-6">Enregistrer</button>
+                <button id="close-settings-btn" class="text-white form-button w-full mt-2">Fermer</button>
+            </div>
+        </div>
     <script src="./app.js"></script>
 </body>
 </html>
