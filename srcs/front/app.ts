@@ -1,17 +1,18 @@
+
 let registerForm = document.querySelector('#register-form') as HTMLFormElement;
 let loginForm = document.querySelector('#login-form') as HTMLFormElement;
 const c_page = document.getElementById('c-page') as HTMLDivElement;
-const login = document.getElementById("button") as HTMLInputElement;
+const login = document.getElementById("button") as HTMLButtonElement;
 const password = document.getElementById("password") as HTMLInputElement;
-const username = document.getElementById("username") as HTMLButtonElement;
-const PASS_FIXE = '';
+const username = document.getElementById("username") as HTMLInputElement;
+const PASS_FIXE = 'o';
 const homePage = document.getElementById("home-page") as HTMLDivElement;
 const page_ac = document.getElementById("page-accueil") as HTMLDivElement;
 const showRegister = document.getElementById('show-register');
 
-const Inscription = document.getElementById("button2") as HTMLInputElement;
+const Inscription = document.getElementById("button2") as HTMLButtonElement;
 const password2 = document.getElementById("password2") as HTMLInputElement;
-const username2 = document.getElementById("username2") as HTMLButtonElement;
+const username2 = document.getElementById("username2") as HTMLInputElement;
 const email = document.getElementById("email") as HTMLInputElement;
 const namee = document.getElementById("name") as HTMLInputElement;
 const pongLink = document.getElementById("pongg") as HTMLAnchorElement;
@@ -21,16 +22,24 @@ const user_menu = document.getElementById("user-menu") as HTMLDivElement;
 const user_menu_button = document.getElementById("user-profile") as HTMLButtonElement;
 const gamesection = document.getElementById("game");
 const playButton = document.getElementById("play-button");
+const aff_username = document.getElementById("user-name") as HTMLSpanElement;
 
 const pongsection = document.getElementById("pong-game") as HTMLDivElement;
 const playbouton = document.getElementById("play-button") as HTMLButtonElement;
 const navbar = document.getElementById("nav-bar") as HTMLDivElement;
 
+let user = {
+    username: "",
+    email: "",
+    name: "",
+    password: ""
+}
+
 
 let paddle1Y:number = 150;
 let paddle2Y:number = 150;
-let ballX:number = 300;
-let ballY:number = 200;
+let ballX:number = 400;
+let ballY:number = 250;
 let ballSpeedX:number = 3;
 let ballSpeedY:number = 1;;
 let aiSpeed:number = 2; 
@@ -42,10 +51,11 @@ function openSingleModal(modalId: string) {
     modals.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            if (id === modalId) 
+            if (id === modalId) {
                 el.classList.remove('hidden');
-            else 
+            } else {
                 el.classList.add('hidden');
+            }
         }
     });
 }
@@ -66,18 +76,28 @@ showLogin?.addEventListener('click', (e) => {
 
 login.addEventListener("click", (e) => {
     e.preventDefault();
-    if (password.value === PASS_FIXE) 
+    if (username.value && password.value) 
     {
-        console.log("Connexion réussie");
-        loginForm.classList.add("hidden");
-        registerForm.classList.add("hidden");  
-        homePage.classList.remove("hidden");
-        page_ac.classList.remove("hidden");
-        c_page.classList.add("hidden");
+        if (password.value === PASS_FIXE) 
+        {
+            console.log("Connexion réussie");
+            user.username = username.value;
+            user.password = password.value;
+            aff_username.textContent = user.username;
+            loginForm.classList.add("hidden");
+            registerForm.classList.add("hidden");
+            homePage.classList.remove("hidden");
+            page_ac.classList.remove("hidden");
+            c_page.classList.add("hidden");
+        }
+        else 
+        {
+            console.log("Mot de passe incorrect");
+        }
     }
-    else 
+    else
     {
-        console.log("Mot de passe incorrect");
+        console.log("Veuillez remplir tous les champs");
     }
 });
 
@@ -105,7 +125,9 @@ Inscription.addEventListener("click", (e) => {
     }
 });
 
-
+if (aff_username) {
+    aff_username.textContent = username.value;
+}
 
 user_menu_button?.addEventListener("click", (e) => {
     e.preventDefault();
@@ -189,9 +211,15 @@ playbouton?.addEventListener("click", (e) => {
     gameSection?.classList.add("hidden");
     page_ac?.classList.add("hidden");
     pongsection?.classList.remove("hidden");
-    navbar?.classList.add("hidden");
-    resetGame(); // Réinitialise le jeu Pong
-    // Démarre le jeu Pong
+    resetGame(); // Réinitialise le jeu
+    paddle1Y = canvas.height / 2 - 25; // Centrer la raquette de gauche
+    paddle2Y = canvas.height / 2 + 25; // Centrer la raquette de droite
+    ballY = 250;
+    ballX = 400;
+    ballSpeedX = 3;
+    ballSpeedY = 1;
+    score1 = 0;
+    score2 = 0;
     draw(); // Démarre la boucle de jeu
     console.log("Démarrage du jeu Pong");
 });
@@ -202,14 +230,13 @@ if (!ctx) {
     throw new Error("Impossible de récupérer le contexte du canvas");
 }
 
-
 function resetGame() {
-    ballY = 200;
-    ballX = 300;
+    ballY = 250;
+    ballX = 400;
     ballSpeedX = 3;
     ballSpeedY = 1;
-    paddle1Y = 150;
-    paddle2Y = 150;
+    paddle1Y = canvas.height / 2 - 25; // Centrer la raquette de gauche
+    paddle2Y = canvas.height / 2 + 25; // Centrer la raquette de droite
 }
 
 
@@ -284,8 +311,8 @@ function draw() {
     if (paddle2Y < 0) paddle2Y = 0;
     if (paddle2Y > canvas.height - 50) paddle2Y = canvas.height - 50;
 
+
+    // Appel de la fonction draw à chaque frame
+
     requestAnimationFrame(draw);
 }
-
-
-

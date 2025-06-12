@@ -5,7 +5,7 @@ var c_page = document.getElementById('c-page');
 var login = document.getElementById("button");
 var password = document.getElementById("password");
 var username = document.getElementById("username");
-var PASS_FIXE = '';
+var PASS_FIXE = 'o';
 var homePage = document.getElementById("home-page");
 var page_ac = document.getElementById("page-accueil");
 var showRegister = document.getElementById('show-register');
@@ -21,13 +21,20 @@ var user_menu = document.getElementById("user-menu");
 var user_menu_button = document.getElementById("user-profile");
 var gamesection = document.getElementById("game");
 var playButton = document.getElementById("play-button");
+var aff_username = document.getElementById("user-name");
 var pongsection = document.getElementById("pong-game");
 var playbouton = document.getElementById("play-button");
 var navbar = document.getElementById("nav-bar");
+var user = {
+    username: "",
+    email: "",
+    name: "",
+    password: ""
+};
 var paddle1Y = 150;
 var paddle2Y = 150;
-var ballX = 300;
-var ballY = 200;
+var ballX = 400;
+var ballY = 250;
 var ballSpeedX = 3;
 var ballSpeedY = 1;
 ;
@@ -40,10 +47,12 @@ function openSingleModal(modalId) {
     modals.forEach(function (id) {
         var el = document.getElementById(id);
         if (el) {
-            if (id === modalId)
+            if (id === modalId) {
                 el.classList.remove('hidden');
-            else
+            }
+            else {
                 el.classList.add('hidden');
+            }
         }
     });
 }
@@ -62,16 +71,24 @@ showLogin === null || showLogin === void 0 ? void 0 : showLogin.addEventListener
 });
 login.addEventListener("click", function (e) {
     e.preventDefault();
-    if (password.value === PASS_FIXE) {
-        console.log("Connexion réussie");
-        loginForm.classList.add("hidden");
-        registerForm.classList.add("hidden");
-        homePage.classList.remove("hidden");
-        page_ac.classList.remove("hidden");
-        c_page.classList.add("hidden");
+    if (username.value && password.value) {
+        if (password.value === PASS_FIXE) {
+            console.log("Connexion réussie");
+            user.username = username.value;
+            user.password = password.value;
+            aff_username.textContent = user.username;
+            loginForm.classList.add("hidden");
+            registerForm.classList.add("hidden");
+            homePage.classList.remove("hidden");
+            page_ac.classList.remove("hidden");
+            c_page.classList.add("hidden");
+        }
+        else {
+            console.log("Mot de passe incorrect");
+        }
     }
     else {
-        console.log("Mot de passe incorrect");
+        console.log("Veuillez remplir tous les champs");
     }
 });
 Inscription.addEventListener("click", function (e) {
@@ -93,6 +110,9 @@ Inscription.addEventListener("click", function (e) {
         console.log("Veuillez remplir tous les champs");
     }
 });
+if (aff_username) {
+    aff_username.textContent = username.value;
+}
 user_menu_button === null || user_menu_button === void 0 ? void 0 : user_menu_button.addEventListener("click", function (e) {
     e.preventDefault();
     user_menu.classList.toggle("hidden");
@@ -160,9 +180,15 @@ playbouton === null || playbouton === void 0 ? void 0 : playbouton.addEventListe
     gameSection === null || gameSection === void 0 ? void 0 : gameSection.classList.add("hidden");
     page_ac === null || page_ac === void 0 ? void 0 : page_ac.classList.add("hidden");
     pongsection === null || pongsection === void 0 ? void 0 : pongsection.classList.remove("hidden");
-    navbar === null || navbar === void 0 ? void 0 : navbar.classList.add("hidden");
-    resetGame(); // Réinitialise le jeu Pong
-    // Démarre le jeu Pong
+    resetGame(); // Réinitialise le jeu
+    paddle1Y = canvas.height / 2 - 25; // Centrer la raquette de gauche
+    paddle2Y = canvas.height / 2 + 25; // Centrer la raquette de droite
+    ballY = 250;
+    ballX = 400;
+    ballSpeedX = 3;
+    ballSpeedY = 1;
+    score1 = 0;
+    score2 = 0;
     draw(); // Démarre la boucle de jeu
     console.log("Démarrage du jeu Pong");
 });
@@ -172,12 +198,12 @@ if (!ctx) {
     throw new Error("Impossible de récupérer le contexte du canvas");
 }
 function resetGame() {
-    ballY = 200;
-    ballX = 300;
+    ballY = 250;
+    ballX = 400;
     ballSpeedX = 3;
     ballSpeedY = 1;
-    paddle1Y = 150;
-    paddle2Y = 150;
+    paddle1Y = canvas.height / 2 - 25; // Centrer la raquette de gauche
+    paddle2Y = canvas.height / 2 + 25; // Centrer la raquette de droite
 }
 document.addEventListener("keydown", function (e) {
     if (e.key === "ArrowUp")
@@ -247,5 +273,6 @@ function draw() {
         paddle2Y = 0;
     if (paddle2Y > canvas.height - 50)
         paddle2Y = canvas.height - 50;
+    // Appel de la fonction draw à chaque frame
     requestAnimationFrame(draw);
 }
