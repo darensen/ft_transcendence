@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="./output.css">
-    <title>Shadow pong</title>
+    <title>42pong</title>
 </head>
 <body>
     <!-- page de connexion -->
@@ -34,16 +34,18 @@
     </div>
     <!-- page d'accueil nav bar section -->
     <div id="home-page" class="justify-center items-center w-screen h-screen bg-teal-900 hidden">
-        <nav id="nav-bar" class="w-full fixed top -0 z-20 bg-black/60 backdrop-blur-sm p-4 border-b-2 border-solid border-emerald-200">
+        <nav id="nav-bar" class="w-full fixed top -0 z-20 bg-black/60 backdrop-blur-sm p-4 border-b-2 border-emerald-200 rounded-3xl">
             <div class="flex items-center justify-between">
                 <img src="../img/logoo.png" alt="logo du site" class="h-16 mr-8">
-                <ol class="flex space-x-8 text-lg font-bold justify-center items-center">
-                    <li><a href="#" id="Chat" class="text-white hover:text-emerald-200">Chat</a></li>
-                    <li><a href="#" id="accueil" class="text-white hover:text-emerald-200">Accueil</a></li>
-                    <li><a href="#" id="pongg" class="text-white hover:text-emerald-200">Pong</a></li>
-                </ol>
+                <div class="">
+                    <ol class="flex items-center space-x-16 gap-x-16 text-lg font-bold">              
+                        <li><a href="#" id="accueil" class="text-white hover:text-emerald-200">Accueil</a></li>
+                        <li><a href="#" id="Chat" class="text-white hover:text-emerald-200">Chat</a></li>
+                        <li><a href="#" id="pongg" class="text-white hover:text-emerald-200">Pong</a></li>
+                    </ol>
+                </div>
                 <div>
-                    <a href="#" id="user-profile" class="hover:border-emerald-200"><img src="../img/user.webp" alt="user" class="w-8 h-8 mr-2"></a>
+                    <a href="#" id="user-profile" class="hover:border-emerald-200 text-emerald-100">pro<img src="../img/user.webp" alt="user" class="w-8 h-8 mr-2 border-2 border-solid border-emerald-100 rounded-full"></a>
                 </div>
             </div>
         </nav>
@@ -57,9 +59,10 @@
         <!-- PAGE DE JEU -->
         <div id="game" class="relative flex flex-col items-center justify-center h-screen hidden">
             <img src="../img/shadow-pong-bg.png" alt="fond d'écran" class="w-screen h-screen top-0 absolute object-cover z-0">
-            <h1 class="text-4xl text-emerald-200 mb-4 z-0">Bienvenue sur Pong</h1>
-            <button id="play-button" class="bg-emerald-700 text-white rounded p-2 font-bold hover:bg-emerald-500 border-2 border-solid border-emerald-200 w-48 z-0">Jouer</button>
-            <button id="logout-button" class="bg-emerald-700 text-white rounded p-2 font-bold hover:bg-emerald-500 border-2 border-solid border-emerald-200 w-48 mt-4 z-0">Tournois</button>
+            <h1 class="text-4xl text-emerald-200 mb-4 z-0">Modes de jeux</h1>
+            <button id="play-button" class="bg-emerald-700 text-white rounded p-2 font-bold hover:bg-emerald-500 border-2 border-solid border-emerald-200 w-48 z-0">VS IA</button>
+            <button id="vs-player" class="bg-emerald-700 text-white rounded p-2 font-bold hover:bg-emerald-500 border-2 border-solid border-emerald-200 w-48 mt-4 z-0">VS JOUEUR</button>
+            <button id="tournois-button" class="bg-emerald-700 text-white rounded p-2 font-bold hover:bg-emerald-500 border-2 border-solid border-emerald-200 w-48 mt-4 z-0">Tournois</button>
         </div>
         <!-- Canvas du PONG -->
         <div id="pong-game" class="relative flex flex-col items-center justify-center h-screen hidden">
@@ -68,22 +71,57 @@
         <!-- page d'accueil -->
         <div id="page-accueil" class="relative flex flex-col items-center justify-center h-screen bg-black/60 backdrop-blur-sm hidden">
             <img src="../img/shadow-pong-bg.png" alt="fond d'écran" class="w-screen h-screen top-0 absolute object-cover z-0">
-            <h1 class="text-5xl text-emerald-200 mb-8 z-10">Coucou <span id="user-name"></span> bienvenue sur Pong</h1>
+            <h1 class="text-5xl text-emerald-200 mb-8 z-10"> bienvenue sur Pong <span id="user-name"></span> </h1>
             <canvas id="home-canvas" class="h-52 w-96 border-2 border-solid border-emerald-200 z-10"></canvas>
         </div>
             <!-- PAGE DE PROFIL UTILISATEUR -->
-        <div id="profile-page" class="hidden w-screen h-screen bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center absolute top-0 left-0 z-40">
-            <h2 class="text-4xl text-emerald-200 mb-6">Mon Profil</h2>
-            <div class="bg-black/80 p-6 rounded-lg border-2 border-emerald-200 w-96 flex flex-col items-center">
-                <img src="../img/user.webp" alt="photo de profil" class="w-24 h-24 rounded-full mb-4 object-cover" onerror="this.src='https://via.placeholder.com/96?text=U'">
-                <p class="text-white mb-2"><strong>Nom d'utilisateur :</strong> <span id="profile-username">Utilisateur</span></p>
-                <p class="text-white mb-2"><strong>Email :</strong> <span id="profile-email">exemple@email.com</span></p>
-                <p class="text-white mb-4"><strong>Nom :</strong> <span id="profile-name">Nom Prénom</span></p>
-                <button id="edit-profile-btn" class="text-white underline border-2 border-solid border-emerald-200 hover:text-emerald-200 form-button w-full">Modifier le profil</button>
-                <button id="close-profile-btn" class="text-white underline border-2 border-solid border-emerald-200 hover:text-emerald-200 form-button w-full mt-2">Fermer</button>
+        <div id="profile-page" class="w-screen h-screen bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center absolute top-0 left-0 z-40 hidden">
+            <div class="bg-black/80 p-6 rounded-lg border-2 border-emerald-200 w-[32rem] flex flex-col items-center mb-6">
+                <img src="../img/user.webp" alt="photo de profil" class="w-24 h-24 rounded-full mb-2 object-cover" onerror="this.src='https://via.placeholder.com/96?text=U'">
+                <h2 class="text-3xl text-emerald-200 mb-4" id="profile-username"></h2>
+                <!-- Navbar d'onglets -->
+                <nav class="flex justify-center space-x-8 mb-4 w-full">
+                    <button id="tab-infos" class="text-white font-bold border-b-2 border-transparent hover:border-emerald-200 focus:border-emerald-200">Mes infos</button>
+                    <button id="tab-stats" class="text-white font-bold border-b-2 border-transparent hover:border-emerald-200 focus:border-emerald-200">Statistiques</button>
+                    <button id="tab-history" class="text-white font-bold border-b-2 border-transparent hover:border-emerald-200 focus:border-emerald-200">Historique</button>
+                </nav>
+                <!-- Contenus des onglets -->
+                <div id="profile-infos" class="w-full">
+                    <p class="text-white mb-2"><strong>Email :</strong> <span id="profile-email"></span></p>
+                    <p class="text-white mb-4"><strong>Nom :</strong> <span id="profile-name"></span></p>
+                    <button id="edit-profile-btn" class="text-white underline border-2 border-solid border-emerald-200 hover:text-emerald-200 form-button w-full">Modifier le profil</button>
+                </div>
+                <div id="profile-stats" class="w-full hidden">
+                    <h3 class="text-2xl text-emerald-200 mb-4">Statistiques</h3>
+                    <div class="flex justify-between w-full text-white mb-2">
+                        <span>Victoires :</span> <span id="profile-wins">0</span>
+                    </div>
+                    <div class="flex justify-between w-full text-white mb-2">
+                        <span>Défaites :</span> <span id="profile-losses">0</span>
+                    </div>
+                    <div class="flex justify-between w-full text-white">
+                        <span>Ratio :</span> <span id="profile-ratio">0</span>
+                    </div>
+                </div>
+                <div id="profile-history-tab" class="w-full hidden">
+                    <h3 class="text-2xl text-emerald-200 mb-4">Historique des parties</h3>
+                    <table class="w-full text-white text-sm">
+                        <thead>
+                            <tr>
+                                <th class="border-b border-emerald-200 pb-2">Date</th>
+                                <th class="border-b border-emerald-200 pb-2">Adversaire</th>
+                                <th class="border-b border-emerald-200 pb-2">Score</th>
+                                <th class="border-b border-emerald-200 pb-2">Résultat</th>
+                            </tr>
+                        </thead>
+                        <tbody id="profile-history">
+                            <!-- Les lignes de parties seront injectées ici -->
+                        </tbody>
+                    </table>
+                </div>
+                <button id="close-profile-btn" class="text-white underline border-2 border-solid border-emerald-200 hover:text-emerald-200 form-button w-full mt-6">Fermer</button>
             </div>
         </div>
-
         <!-- PAGE DE PARAMÈTRES -->
         <div id="settings-page" class="hidden w-screen h-screen bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center absolute top-0 left-0 z-40">
             <h2 class="text-4xl text-emerald-200 mb-6">Paramètres</h2>
@@ -103,5 +141,6 @@
             </div>
         </div>
     <script src="./app.js"></script>
+    <script src="./socket.js"></script>
 </body>
 </html>

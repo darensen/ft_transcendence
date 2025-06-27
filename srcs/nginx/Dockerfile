@@ -12,5 +12,8 @@ COPY /front /usr/share/nginx/html
 
 COPY /nginx/default.conf ./etc/nginx/conf.d/default.conf 
 
+COPY ./img /usr/share/nginx/html/img
+
+RUN chmod -R 755 /usr/share/nginx/html/img
 
 
