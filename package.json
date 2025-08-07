@@ -1,7 +1,10 @@
 {
   "dependencies": {
-    "@tailwindcss/cli": "^4.1.7",
-    "fastify": "^5.4.0",
-    "tailwindcss": "^4.1.7"
+    "typescript": "^5.8.3",
+    "@fastify/session": "^8.0.0",
+    "@fastify/cookie": "^8.4.1"
+  },
+  "devDependencies": {
+    "prisma": "^6.9.0"
   }
 }
