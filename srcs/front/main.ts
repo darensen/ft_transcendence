@@ -27,11 +27,10 @@ const backProfileBtn = document.getElementById('back-profile-btn') as HTMLButton
 const addFriendBtn = document.getElementById('add-friend-btn') as HTMLButtonElement | null;
 const log_page = document.getElementById('c-page') as HTMLDivElement | null;
 const page_acc = document.getElementById('page-accueil') as HTMLDivElement | null;
-const pong_gameSection = document.getElementById('pong-game') as HTMLDivElement | null;
 const canvas = document.getElementById('pong') as HTMLCanvasElement;
 const pongpage = document.getElementById('pong-game') as HTMLDivElement | null;
 const bg_blur = document.getElementById('blur-bg') as HTMLDivElement | null;
-
+const profileHistory = document.getElementById('profile-history') as HTMLDivElement | null;
 
 let pingInterval: number | undefined;
 
@@ -55,6 +54,8 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
   profileSection.classList.add('hidden');
   pongpage?.classList.add('hidden');
   bg_blur?.classList.add('hidden');
+  publicProfileSection?.classList.add('hidden');
+  
 
   if (page_acc) page_acc.classList.add('hidden');
   if (log_page) log_page.classList.add('hidden');
@@ -71,6 +72,7 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
     homeSection.classList.remove('hidden');
     showRegisterBtn.classList.add('hidden');
     log_page?.classList.add('hidden');
+    drawHomePong();
     fetch('/api/me')
       .then(res => res.json())
       .then(user => {
@@ -84,7 +86,6 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
         }
       });
     addLogoutButton();
-    drawHomePong();
   } else if (view === 'game') {
     let vs_player = document.getElementById('vs-player') as HTMLButtonElement | null;
 
@@ -93,6 +94,7 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
     showRegisterBtn.classList.add('hidden');
     vs_player?.addEventListener('click', () => 
     {
+      canvas.classList.add('hidden');
       gameSection.classList.add('hidden');
       pongpage?.classList.remove('hidden');
       if (!canvas) {
@@ -105,6 +107,7 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
         return;
       }
       // ajout d'un boutton pour commencer le matchmaking
+      let blurm_bg = document.getElementById('blurm-bg') as HTMLDivElement;
       const startMatchmakingBtn = document.createElement('button');
       startMatchmakingBtn.textContent = 'Commencer le matchmaking';
       startMatchmakingBtn.classList.add('bg-gray-900', 'text-white', 'px-4', 'py-2', 'rounded', 'border', 'border-gray-700', 'hover:bg-gray-800');
@@ -114,6 +117,9 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
       pongpage?.appendChild(startMatchmakingBtn);
       startMatchmakingBtn.addEventListener('click', (e) => {
         e.preventDefault();
+        if (blurm_bg) {
+          blurm_bg.classList.remove('hidden');
+        }
         let ws: WebSocket;
         let playernumber: number | null = null;
         let gameState: any = null;
@@ -126,6 +132,10 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
           if (data.type === 'match_found') {
+            if (blurm_bg) {
+              blurm_bg.classList.add('hidden');
+            }
+            canvas.classList.remove('hidden');
             playernumber = data.playernumber;
             startPongGame();
           } else if (data.type === 'game_state') {
@@ -157,7 +167,7 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
             return;
           }
           else if (data.type === 'winner') {
-            if (finished) return; // Si déjà terminé, ne rien faire
+            if (finished) return; 
             finished = true;
             let winnerpopup = document.getElementById('winner-popup') as HTMLDivElement;
             let btnfermer = document.getElementById('fermer') as HTMLButtonElement;
@@ -231,7 +241,7 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
               if (e.key === 'ArrowUp' || e.key === 'z' || e.key === 'Z') { paddleY -= 10; changed = true; }
               if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { paddleY += 10; changed = true; }
             }
-            paddleY = Math.max(0, Math.min(height-paddleH, paddleY));
+            paddleY = Math.max(0, Math.min(canvas.height-paddleH, paddleY));
             if (changed) {
               ws.send(JSON.stringify({ type: 'paddle_move', y: paddleY }));
             }
@@ -260,6 +270,7 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
     });
   } else if (view === 'public-profile' && publicUser) {
     homeSection.classList.remove('hidden');
+    bg_blur?.classList.remove('hidden');
     if (publicProfileSection) publicProfileSection.classList.remove('hidden');
     if (publicProfileAvatarImg) publicProfileAvatarImg.src = (publicUser.avatar || '/avatars/default.png') + '?t=' + Date.now();
     if (publicProfileEmail) publicProfileEmail.textContent = publicUser.email;
@@ -279,6 +290,7 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
     }
     if (!statusText) {
       statusText = document.createElement('span');
+      statusText.className = 'text-white';
       statusText.id = 'public-profile-status-text';
       statusText.style.marginLeft = '6px';
       statusDot?.parentElement?.insertBefore(statusText, statusDot.nextSibling);
@@ -513,6 +525,25 @@ document.addEventListener('DOMContentLoaded', () => {
     deleteAvatarBtn.addEventListener('click', async () => {
       await fetch('/api/me/avatar', { method: 'DELETE' });
       showView('profile', false);
+    });
+  }
+
+  const tabInfo = document.getElementById('profile-tab-info');
+  const tabHistory = document.getElementById('profile-tab-history');
+  const infoPanel = document.getElementById('profile-info-panel');
+  const historyPanel = document.getElementById('profile-history-panel');
+  if (tabInfo && tabHistory && infoPanel && historyPanel) {
+    tabInfo.addEventListener('click', () => {
+      tabInfo.classList.add('bg-gray-700');
+      tabHistory.classList.remove('bg-gray-700');
+      infoPanel.classList.remove('hidden');
+      historyPanel.classList.add('hidden');
+    });
+    tabHistory.addEventListener('click', () => {
+      tabHistory.classList.add('bg-gray-700');
+      tabInfo.classList.remove('bg-gray-700');
+      infoPanel.classList.add('hidden');
+      historyPanel.classList.remove('hidden');
     });
   }
 });

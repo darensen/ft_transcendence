@@ -15,7 +15,6 @@ wss.on('connection', ws => {
     try { data = JSON.parse(msg); } catch { return; }
     if (data.type === 'join') {
       if (waiting) {
-        // Création d'une room
         const width = 800, height = 400;
         const room = {
           players: [waiting, ws],
@@ -66,36 +65,83 @@ wss.on('connection', ws => {
 function startGameLoop(room) {
   const width = 800, height = 400, paddleH = 80, paddleW = 10;
   function loop() {
+    let play = room.players;
     let s = room.state;
+    // Ball movement
     s.ball.x += s.ball.vx;
     s.ball.y += s.ball.vy;
-    if (s.ball.y < 0 || s.ball.y > height) s.ball.vy *= -1;
-    if (s.ball.x < 30 && s.ball.y > s.paddle1.y && s.ball.y < s.paddle1.y + paddleH) s.ball.vx *= -1;
-    if (s.ball.x > width - 30 && s.ball.y > s.paddle2.y && s.ball.y < s.paddle2.y + paddleH) s.ball.vx *= -1;
+
+    // Wall collision (top/bottom)
+    if (s.ball.y < 0) {
+      s.ball.y = 0;
+      s.ball.vy *= -1;
+    }
+    if (s.ball.y > height) {
+      s.ball.y = height;
+      s.ball.vy *= -1;
+    }
+
+    // Paddle collision (left)
+    if (
+      s.ball.x < 30 + paddleW &&
+      s.ball.x > 20 &&
+      s.ball.y > s.paddle1.y &&
+      s.ball.y < s.paddle1.y + paddleH
+    ) {
+      s.ball.x = 30 + paddleW; // Prevent sticking
+      s.ball.vx *= -1;
+      // Add angle effect based on hit position
+      let hitPos = (s.ball.y - s.paddle1.y - paddleH/2) / (paddleH/2);
+      s.ball.vy += hitPos * 2;
+    }
+
+    // Paddle collision (right)
+    if (
+      s.ball.x > width - 30 - paddleW &&
+      s.ball.x < width - 20 &&
+      s.ball.y > s.paddle2.y &&
+      s.ball.y < s.paddle2.y + paddleH
+    ) {
+      s.ball.x = width - 30 - paddleW; // Prevent sticking
+      s.ball.vx *= -1;
+      // Add angle effect based on hit position
+      let hitPos = (s.ball.y - s.paddle2.y - paddleH/2) / (paddleH/2);
+      s.ball.vy += hitPos * 2;
+    }
+
+    // Score (left/right)
     if (s.ball.x < 0) { s.score2++; resetBall(s); }
     if (s.ball.x > width) { s.score1++; resetBall(s); }
+
+    // Limit ball speed
+    s.ball.vx = Math.max(-8, Math.min(8, s.ball.vx));
+    s.ball.vy = Math.max(-6, Math.min(6, s.ball.vy));
+
+    // Send state to players
     room.players.forEach(p => {
       if (p.readyState === WebSocket.OPEN) {
         p.send(JSON.stringify({ type: 'game_state', state: s }));
       }
     });
+
+    // Continue loop if both players are connected
     if (room.players.every(p => p.readyState === WebSocket.OPEN)) {
       setTimeout(loop, 1000/60);
     }
+
+    // Game end
     if (s.score1 >= 5 || s.score2 >= 5) {
-      room.players.forEach(p => {
-        if (p.readyState === WebSocket.OPEN) {
-          if (s.score1 >= 5) 
-          {
-            p.send(JSON.stringify({ type: 'winner', score1: s.score1, score2: s.score2 }));
-          } else {
-            p.send(JSON.stringify({ type: 'loser', score1: s.score1, score2: s.score2 }));
-          }
-        } 
-      });
+      let joueur1 = play[0];
+      let joueur2 = play[1];
+      if (s.score1 >= 5) {
+        joueur1.send(JSON.stringify({ type: 'winner', score1 : s.score1, score2: s.score2, playernumber: 1}));
+        joueur2.send(JSON.stringify({type: 'loser', score1: s.score1, score2: s.score2, playernumber: 2}));
+      } else {
+        joueur1.send(JSON.stringify({type: 'loser', score1: s.score1, score2: s.score2, playernumber: 1}));
+        joueur2.send(JSON.stringify({type: 'winner', score1: s.score1, score2: s.score2, playernumber: 2}));
+      }
       rooms = rooms.filter(r => r !== room);
       return;
-      
     }
   }
   loop();
