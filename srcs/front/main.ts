@@ -32,7 +32,6 @@ const pongpage = document.getElementById('pong-game') as HTMLDivElement | null;
 const bg_blur = document.getElementById('blur-bg') as HTMLDivElement | null;
 const profileHistory = document.getElementById('profile-history') as HTMLDivElement | null;
 const tournamentSection = document.getElementById('tournament-section') as HTMLDivElement | null;
-const pongPlayers = document.getElementById('pong-players') as HTMLDivElement | null;
 const tournoisBtn = document.getElementById('tournois-button') as HTMLButtonElement | null;
 
 // let pingInterval: number | undefined;
@@ -53,13 +52,13 @@ const tournoisBtn = document.getElementById('tournois-button') as HTMLButtonElem
 let pingInterval: number | undefined;
 
 pingInterval = window.setInterval(async () => {
-  try {
+  const userId = localStorage.getItem('userId');
+  if (userId) {
+    console.log('Pinging server for user:', userId);
     await fetch('/api/ping', {
       method: 'POST',
-      credentials: 'include'
+      headers: { 'X-User-Id': userId }
     });
-  } catch (error) {
-    console.error('Ping failed:', error);
   }
 }, 10_000);
 
@@ -83,7 +82,7 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
   bg_blur?.classList.add('hidden');
   publicProfileSection?.classList.add('hidden');
   tournamentSection?.classList.add('hidden');
-  pongPlayers?.classList.add('hidden');
+  
 
   if (page_acc) page_acc.classList.add('hidden');
   if (log_page) log_page.classList.add('hidden');
@@ -143,10 +142,10 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
       let blurm_bg = document.getElementById('blurm-bg') as HTMLDivElement;
       const startMatchmakingBtn = document.createElement('button');
       startMatchmakingBtn.textContent = 'Commencer le matchmaking';
-      startMatchmakingBtn.classList.add(
-        'bg-gray-900', 'text-white', 'px-4', 'py-2', 'rounded', 'border', 'border-gray-700', 'hover:bg-gray-800',
-        'absolute', 'top-1/2', 'left-1/2', 'transform', '-translate-x-1/2', '-translate-y-1/2'
-      );
+      startMatchmakingBtn.classList.add('bg-gray-900', 'text-white', 'px-4', 'py-2', 'rounded', 'border', 'border-gray-700', 'hover:bg-gray-800');
+      startMatchmakingBtn.style.position = 'absolute';
+      startMatchmakingBtn.style.top = '10px';
+      startMatchmakingBtn.style.right = '10px';
       pongpage?.appendChild(startMatchmakingBtn);
       startMatchmakingBtn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -160,14 +159,13 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
         let finished: boolean = false;
         ws = new WebSocket('ws://localhost:8081');
         ws.onopen = async () => {
+          const userId = localStorage.getItem('userId');
           const response = await fetch('/api/me', {
-            credentials: 'include'
+            headers: { 'X-User-Id': userId || '' }
           });
-          let userId = null;
           let displayName = 'Joueur';
           if (response.ok) {
             const userData = await response.json();
-            userId = userData.id;
             displayName = userData.displayName || 'Joueur';
           }
           ws.send(JSON.stringify({ type: 'join', userId, displayName }));
@@ -179,32 +177,7 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
               blurm_bg.classList.add('hidden');
             }
             canvas.classList.remove('hidden');
-            pongPlayers?.classList.remove('hidden');
             playernumber = data.playernumber;
-            fetch('/api/me', { credentials: 'include' })
-              .then(async (res) => (res.ok ? res.json() : null))
-              .then((user) => {
-                const avatarId = playernumber === 1 ? 'playerL-avatar' : 'playerR-avatar';
-                const nameId = playernumber === 1 ? 'playerL-name' : 'playerR-name';
-                const avatarElement = document.getElementById(avatarId) as HTMLImageElement;
-                const nameElement = document.getElementById(nameId) as HTMLSpanElement;
-                if (avatarElement && user) {
-                  avatarElement.src = (user.avatar || '/avatars/default.png') + '?t=' + Date.now();
-                  nameElement.textContent = user.displayName || 'Joueur';
-                }
-              });
-            fetch(`/api/user/${encodeURIComponent(data.opponent_name)}`, { credentials: 'include' })
-              .then(async (res) => (res.ok ? res.json() : null))
-              .then((user) => {
-                const avatarId = playernumber === 1 ? 'playerR-avatar' : 'playerL-avatar';
-                const nameId = playernumber === 1 ? 'playerR-name' : 'playerL-name';
-                const avatarElement = document.getElementById(avatarId) as HTMLImageElement;
-                const nameElement = document.getElementById(nameId) as HTMLSpanElement;
-                if (avatarElement && user) {
-                  avatarElement.src = (user.avatar || '/avatars/default.png') + '?t=' + Date.now();
-                  nameElement.textContent = user.displayName || 'Joueur';
-                }
-              });
             startPongGame();
           } else if (data.type === 'game_state') {
             gameState = data.state;
@@ -288,6 +261,8 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
             ctx.fill();
             ctx.font = '18px Arial';
             ctx.fillStyle = '#fff';
+            ctx.fillText('Joueur 1', 20, 20);
+            ctx.fillText('Joueur 2', canvas.width - ctx.measureText('Joueur 2').width - 30, 20);
             ctx.font = '32px Arial';
             ctx.fillText(gameState.score1, canvas.width/2-50, 40);
             ctx.fillText(gameState.score2, canvas.width/2+30, 40);
@@ -417,7 +392,6 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
   }
 
   if (view === 'tournament') {
-    homeSection.classList.remove('hidden');
     tournamentSection?.classList.remove('hidden');
     for (let i = 1; i <= 4; i++) {
       const slotDiv = document.getElementById(`slot-${i}`);
@@ -714,9 +688,7 @@ if (searchUserBtn && searchUserInput && searchUserResult) {
       searchUserResult.textContent = 'Veuillez entrer un pseudo.';
       return;
     }
-    const res = await fetch(`/api/user/${encodeURIComponent(displayName)}`, { 
-      credentials: 'include' 
-    });
+    const res = await fetch(`/api/user/${encodeURIComponent(displayName)}`);
     if (res.ok) {
       const user = await res.json();
       searchUserResult.innerHTML = `
@@ -782,29 +754,13 @@ async function renderMatchHistory() {
   if (!historyList || !statsDiv) return;
 
   try {
-    console.log('Fetching match history...');
-    
-    // D'abord récupérer les infos de l'utilisateur actuel
-    const userRes = await fetch('/api/me', { credentials: 'include' });
-    if (!userRes.ok) {
-      historyList.textContent = 'Erreur d\'authentification.';
-      return;
-    }
-    const currentUser = await userRes.json();
-    
-    const res = await fetch('/api/matches/history', { credentials: 'include' });
-    console.log('Response status:', res.status);
-    console.log('Response ok:', res.ok);
-    
+    const res = await fetch('/api/matches/history');
     if (!res.ok) {
-      const errorText = await res.text();
-      console.log('Error response:', errorText);
       historyList.textContent = 'Erreur lors du chargement de l\'historique.';
       return;
     }
 
     const matches = await res.json();
-    console.log('Matches received:', matches);
     
     if (matches.length === 0) {
       historyList.textContent = 'Aucune partie jouée pour le moment.';
@@ -815,9 +771,9 @@ async function renderMatchHistory() {
     // Afficher l'historique des matches
     historyList.innerHTML = matches.map((match: any) => {
       const isWinner = match.isWinner;
-      const opponent = match.player1.id === currentUser.id ? match.player2 : match.player1;
-      const userScore = match.player1.id === currentUser.id ? match.player1Score : match.player2Score;
-      const opponentScore = match.player1.id === currentUser.id ? match.player2Score : match.player1Score;
+      const opponent = match.player1.id === parseInt(localStorage.getItem('userId') || '0') ? match.player2 : match.player1;
+      const userScore = match.player1.id === parseInt(localStorage.getItem('userId') || '0') ? match.player1Score : match.player2Score;
+      const opponentScore = match.player1.id === parseInt(localStorage.getItem('userId') || '0') ? match.player2Score : match.player1Score;
       
       let matchTypeLabel = '';
       if (match.matchType === 'TOURNAMENT_SEMI') {
@@ -832,8 +788,8 @@ async function renderMatchHistory() {
         <div class="bg-gray-800 p-3 rounded mb-2">
           <div class="flex justify-between items-center mb-2">
             <div class="flex items-center">
-              <span class="font-semibold">vs ${opponent.displayName}</span>
               <img src="${opponent.avatar || '/avatars/default.png'}" class="w-8 h-8 rounded-full mr-2" alt="Avatar">
+              <span class="font-semibold">vs ${opponent.displayName}</span>
             </div>
             <div class="text-lg font-bold ${isWinner ? 'text-green-400' : 'text-red-400'}">
               ${isWinner ? 'VICTOIRE' : 'DÉFAITE'}
@@ -903,7 +859,7 @@ if (tournamentSection) {
       const slot = target.dataset.slot;
       target.textContent = 'En attente...';
       target.setAttribute('disabled', 'true');
-      
+      const userId = localStorage.getItem('userId');
       const ws = new WebSocket('ws://localhost:8082');
       let gameWs: WebSocket | null = null;
       let playernumber: number | null = null;
@@ -915,29 +871,20 @@ if (tournamentSection) {
       let player2Name = 'Joueur 2';
 
       ws.onopen = async () => {
-        const response = await fetch('/api/me', { credentials: 'include' });
-        let userId = null;
+  const response = await fetch('/api/me', { credentials: 'include' });
         let displayName = 'Joueur';
         if (response.ok) {
           const userData = await response.json();
-          userId = userData.id;
           displayName = userData.displayName || 'Joueur';
         }
         ws.send(JSON.stringify({ type: 'join_tournament', slot, userId, displayName }));
       };
-      ws.onmessage = async (event) => {
+      ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.type === 'update_slots') {
-          // Récupérer l'utilisateur actuel
-          const userRes = await fetch('/api/me', { credentials: 'include' });
-          let currentUserId = null;
-          if (userRes.ok) {
-            const userData = await userRes.json();
-            currentUserId = userData.id;
-          }
-          
+          const userId = localStorage.getItem('userId');
           const userIds = data.userIds || [];
-          const userAlreadyJoined = currentUserId ? userIds.includes(currentUserId.toString()) : false;
+          const userAlreadyJoined = userIds.includes(userId);
           
           for (let i = 1; i <= 4; i++) {
             const slotDiv = document.getElementById(`slot-${i}`);
@@ -1103,7 +1050,7 @@ async function renderFriendsList() {
   const container = document.getElementById('friends-list');
   if (!container) return;
   container.innerHTML = 'Chargement...';
-  const res = await fetch('/api/friends', { credentials: 'include' });
+  const res = await fetch('/api/friends');
   if (!res.ok) {
     container.innerHTML = 'Erreur lors du chargement des amis.';
     return;
@@ -1126,7 +1073,7 @@ async function renderFriendsList() {
       e.stopPropagation();
       const id = (e.target as HTMLElement).getAttribute('data-id');
       if (id) {
-        await fetch(`/api/friends/${id}`, { method: 'DELETE', credentials: 'include' });
+        await fetch(`/api/friends/${id}`, { method: 'DELETE' });
         renderFriendsList();
       }
     });
@@ -1138,9 +1085,7 @@ async function renderFriendsList() {
       if (id) {
         const friend = friends.find((f: any) => f.id == id);
         if (friend && friend.displayName) {
-          const res = await fetch(`/api/user/${encodeURIComponent(friend.displayName)}`, { 
-            credentials: 'include' 
-          });
+          const res = await fetch(`/api/user/${encodeURIComponent(friend.displayName)}`);
           if (res.ok) {
             const user = await res.json();
             showView('public-profile', true, user);
@@ -1197,7 +1142,7 @@ async function renderFriendRequests() {
   const container = document.getElementById('friend-requests-list');
   if (!container) return;
   container.innerHTML = 'Chargement...';
-  const res = await fetch('/api/friends/requests', { credentials: 'include' });
+  const res = await fetch('/api/friends/requests');
   if (!res.ok) {
     container.innerHTML = 'Erreur lors du chargement des demandes.';
     return;
@@ -1218,7 +1163,7 @@ async function renderFriendRequests() {
     btn.addEventListener('click', async (e) => {
       const id = (e.target as HTMLElement).getAttribute('data-id');
       if (id) {
-        await fetch(`/api/friends/${id}/accept`, { method: 'POST', credentials: 'include' });
+        await fetch(`/api/friends/${id}/accept`, { method: 'POST' });
         renderFriendRequests();
         renderFriendsList();
       }
@@ -1230,10 +1175,7 @@ if (publicProfileSection) {
   publicProfileSection.addEventListener('click', async (e) => {
     const target = e.target as HTMLElement;
     if (target && target.id === 'add-friend-btn' && target.dataset.userid) {
-      const res = await fetch(`/api/friends/${target.dataset.userid}`, { 
-        method: 'POST', 
-        credentials: 'include' 
-      });
+      const res = await fetch(`/api/friends/${target.dataset.userid}`, { method: 'POST' });
       if (res.ok) {
         alert('Ami ajouté !');
         if (!profileSection.classList.contains('hidden')) {

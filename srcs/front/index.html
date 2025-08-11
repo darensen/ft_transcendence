@@ -66,22 +66,12 @@
         <h1 class="text-4xl text-whiborder-white mb-4 z-0 text-white">Modes de jeux</h1>
         <div class="flex flex-col items-center z-10">
           <button id="play-button" class="bg-black text-white rounded p-2 font-bold hover:bg-gray-900 border-2 border-solid border-white w-48">VS IA</button>
-          <button id="vs-player" class="bg-black text-white rounded p-2 font-bold hover:bg-gray-900 border-2 border-solid border-white w-48 mt-4">VS Joueur</button>
+          <button id="vs-player" class="bg-black text-white rounded p-2 font-bold hover:bg-gray-900 border-2 border-solid border-white w-48 mt-4">VS JOUEUR</button>
           <button id="tournois-button" class="bg-black text-white rounded p-2 font-bold hover:bg-gray-900 border-2 border-solid border-white w-48 mt-4">Tournois</button>
         </div>
       </div>
       <!-- Canvas du PONG --> 
       <div id="pong-game" class="relative flex flex-col items-center justify-center h-screen hidden">
-          <div id="pong-players" class="flex items-center justify-between w-[800px] mb-4 hidden">
-            <div class="flex items-center gap-2">
-              <img id="playerL-avatar" alt="Avatar Joueur 1" class="w-12 h-12 rounded-full border-2 border-white">
-              <span id="playerL-name" class="text-white font-bold text-lg">Joueur 1</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span id="playerR-name" class="text-white font-bold text-lg">Joueur 2</span>
-              <img id="playerR-avatar" alt="Avatar Joueur 2" class="w-12 h-12 rounded-full border-2 border-white">
-            </div>
-          </div>
           <canvas id="pong" width="800" height="400" class="hidden border-2 border-solid border-white z-10"></canvas>
       </div>
       <div id="winner-popup" class="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden z-30">
@@ -111,11 +101,7 @@
         </div>
         <!-- Overlay flou pour le profil -->
         <div id="blur-bg" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"></div>
-        <div id="blurm-bg" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40">
-          <div class="flex items-center justify-center h-full">
-            <p class="text-white text-xl font-bold"> Recherche d'un adversaire ...  </p>
-          </div>
-        </div>
+        <div id="blurm-bg" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"></div>
         <div id="profile-section" class="hidden fixed inset-0 flex items-center justify-center z-50">
           <div class="bg-gray-900 p-6 rounded shadow-md w-full max-w-3xl border border-gray-700">
             <div class="flex items-center mb-4">
@@ -171,29 +157,31 @@
           <button id="back-profile-btn" class="mt-4 text-blue-500">Retour à mon profil</button>
           </div>
         </div>
-        <div id="tournament-section" class="relative flex flex-col items-center justify-center h-screen bg-black hidden">
-          <h2 class="text-2xl text-white font-bold mb-6">Tournoi 4 joueurs</h2>
-          <div id="tournament-bracket" class="flex justify-between w-full max-w-4xl mb-6">
-            <div class="flex flex-col items-center">
-              <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-1">Slot 1</div>
-              <button class="join-tournament-btn bg-blue-500 text-white px-4 py-2 rounded" data-slot="1">Rejoindre</button>
-            </div>
-            <div class="flex flex-col items-center">
-              <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-2">Slot 2</div>
-              <button class="join-tournament-btn bg-blue-500 text-white px-4 py-2 rounded" data-slot="2">Rejoindre</button>
-            </div>
-            <div class="flex flex-col items-center">
-              <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-3">Slot 3</div>
-              <button class="join-tournament-btn bg-blue-500 text-white px-4 py-2 rounded" data-slot="3">Rejoindre</button>
-            </div>
-            <div class="flex flex-col items-center">
-              <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-4">Slot 4</div>
-              <button class="join-tournament-btn bg-blue-500 text-white px-4 py-2 rounded" data-slot="4">Rejoindre</button>
-            </div>
-          </div>
-          <button id="close-tournament-btn" class="mt-4 text-blue-400">Fermer</button>
-        </div>
     </div>
+</div>
+<div id="tournament-section" class="hidden fixed inset-0 flex items-center justify-center z-50">
+  <div class="bg-gray-900 p-6 rounded shadow-md w-full max-w-2xl border border-gray-700 flex flex-col items-center">
+    <h2 class="text-2xl text-white font-bold mb-6">Tournoi 4 joueurs</h2>
+    <div id="tournament-bracket" class="flex justify-between w-full mb-6">
+      <div class="flex flex-col items-center">
+        <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-1">Slot 1</div>
+        <button class="join-tournament-btn bg-blue-500 text-white px-4 py-2 rounded" data-slot="1">Rejoindre</button>
+      </div>
+      <div class="flex flex-col items-center">
+        <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-2">Slot 2</div>
+        <button class="join-tournament-btn bg-blue-500 text-white px-4 py-2 rounded" data-slot="2">Rejoindre</button>
+      </div>
+      <div class="flex flex-col items-center">
+        <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-3">Slot 3</div>
+        <button class="join-tournament-btn bg-blue-500 text-white px-4 py-2 rounded" data-slot="3">Rejoindre</button>
+      </div>
+      <div class="flex flex-col items-center">
+        <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-4">Slot 4</div>
+        <button class="join-tournament-btn bg-blue-500 text-white px-4 py-2 rounded" data-slot="4">Rejoindre</button>
+      </div>
+    </div>
+    <button id="close-tournament-btn" class="mt-4 text-blue-400">Fermer</button>
+  </div>
 </div>
 <script type="module" src="main.js"></script>
 </body>

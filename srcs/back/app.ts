@@ -54,11 +54,22 @@ app.register(multipart, {
   }
 });
 app.register(fastifyCookie);
-// app.register(fastifySession, {
-//   secret: 'secretsecretsecretsecretsecretsecret',
-//   cookie: { secure: false, httpOnly: true, sameSite: 'lax' }, // secure: true en prod HTTPS
-//   saveUninitialized: false
-// });
+app.register(fastifySession, {
+  secret: 'secretsecretsecretsecretsecretsecret',
+  cookie: { secure: false, httpOnly: true, sameSite: 'lax' }, // secure: true en prod HTTPS
+  saveUninitialized: false
+});
+
+app.addHook('preHandler', async (req: any, reply: any) => {
+  let userId: number | undefined = undefined;
+  if ((req.session as any)?.userId)
+    userId = (req.session as any).userId;
+  else if (req.headers['x-user-id'])
+    userId = parseInt(req.headers['x-user-id'] as string, 10);
+  else if ((req.body as any)?.userId)
+    userId = parseInt((req.body as any).userId, 10);
+  (req as any).userId = userId;
+});
 
 // fastify.post('/api/register', async (req, reply) => {
 //   const { email, password, displayName } = req.body as any;
@@ -144,7 +155,7 @@ app.post('/api/login', {
   const token = app.jwt.sign({ id: user.id, email: user.email });
   // Safer cookie (JS cannot read it). If you want localStorage instead, return {token}.
   reply
-    .setCookie('token', token, { httpOnly: true, secure: false, sameSite: 'lax', path: '/' })
+    .setCookie('token', token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/' })
     .send({ ok: true });
 });
 
@@ -163,7 +174,7 @@ app.post('/api/login', {
 app.get('/api/me', { preHandler: (app as any).requireAuth }, async (req: any) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user.id },
-    select: { id: true, email: true, displayName: true, avatar: true, is2FAEnabled: true }
+    select: { id: true, email: true, displayName: true, is2FAEnabled: true }
   });
   return user;
 });
@@ -185,13 +196,15 @@ app.put('/api/me', { preHandler: (app as any).requireAuth }, async (req: any, re
 app.post('/api/me/avatar', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
   const MAX_SIZE = 50 * 1024; // 50kb
   const parts = req.parts ? req.parts() : null;
-  let userId = req.user.id;
+  let userId = (req as any).user?.id ?? req.userId;
   let filePart: any = null;
 
   if (parts) {
     for await (const part of parts) {
       if (part.type === 'file') {
         filePart = part;
+      } else if (part.type === 'field' && part.fieldname === 'userId' && !userId) {
+        userId = parseInt(part.value as string, 10);
       }
     }
   } else {
@@ -242,7 +255,7 @@ app.post('/api/me/avatar', { preHandler: (app as any).requireAuth }, async (req:
 });
 
 app.delete('/api/me/avatar', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => { //remettre avatar par defaut
-  const userId = req.user.id;
+  const userId = (req as any).user?.id ?? req.userId;
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (user?.avatar && user.avatar !== '/avatars/default.png') {
     const oldPath = path.join(__dirname, user.avatar);
@@ -255,12 +268,10 @@ app.delete('/api/me/avatar', { preHandler: (app as any).requireAuth }, async (re
   reply.send({ success: true });
 });
 
-app.post('/api/logout', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
-  const userId = req.user.id;
-  if (userId) onlineUsers.delete(userId);
-  reply
-    .clearCookie('token', { path: '/' })
-    .send({ success: true });
+app.post('/api/logout', async (req: any, reply: any) => {
+  if (req.userId) onlineUsers.delete(req.userId);
+  req.session.destroy();
+  reply.send({ success: true });
 });
 
 
@@ -268,10 +279,9 @@ const onlineUsers = new Map<number, number>();
 
 const ONLINE_TIMEOUT = 10_000; //10sec avant d'etre mis hors ligne
 
-app.post('/api/ping', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => { //ping pour le statut en ligne
-  const userId = req.user.id;
-  if (userId) {
-    onlineUsers.set(userId, Date.now());
+app.post('/api/ping', async (req: any, reply: any) => { //ping pour le statut en ligne
+  if (req.userId) {
+    onlineUsers.set(req.userId, Date.now());
     reply.send({ online: true });
   } else {
     reply.status(401).send({ error: 'Non authentifié.' });
@@ -283,7 +293,7 @@ function isUserOnline(userId: number): boolean {
   return !!last && Date.now() - last < ONLINE_TIMEOUT;
 }
 
-app.get('/api/user/:displayName', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => { //recherche avec pseudo
+app.get('/api/user/:displayName', async (req: any, reply: any) => { //recherche avec pseudo
   const { displayName } = req.params as { displayName: string };
   const user = await prisma.user.findUnique({ where: { displayName } });
   if (!user) return reply.status(404).send({ error: 'Utilisateur non trouvé' });
@@ -296,8 +306,8 @@ app.get('/api/user/:displayName', { preHandler: (app as any).requireAuth }, asyn
   });
 });
 
-app.get('/api/friends', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
-  const userId = req.user.id;
+app.get('/api/friends', async (req: any, reply: any) => {
+  const userId = req.userId;
   if (!userId) return reply.status(401).send({ error: 'Non authentifié.' });
   const friends = await prisma.friend.findMany({
     where: { userId, status: 'ACCEPTED' },
@@ -309,25 +319,22 @@ app.get('/api/friends', { preHandler: (app as any).requireAuth }, async (req: an
   })));
 });
 
-app.get('/api/friends/requests', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
-  const userId = req.user.id;
+app.get('/api/friends/requests', async (req: any, reply: any) => {
+  const userId = req.userId;
   if (!userId) return reply.status(401).send({ error: 'Non authentifié.' });
   const requests = await prisma.friend.findMany({
     where: { friendId: userId, status: 'PENDING' },
     include: { user: { select: { id: true, displayName: true, avatar: true, email: true } } },
   });
   reply.send(requests.map((r: any) => ({
-    id: r.user.id,
-    displayName: r.user.displayName,
-    avatar: r.user.avatar,
-    email: r.user.email,
+    ...r.user,
     online: isUserOnline(r.user.id),
     friendRequestId: r.id
   })));
 });
 
-app.post('/api/friends/:id', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
-  const userId = req.user.id;
+app.post('/api/friends/:id', async (req: any, reply: any) => {
+  const userId = req.userId;
   const friendId = parseInt((req.params as any).id, 10);
   if (!userId || !friendId) return reply.status(400).send({ error: 'Paramètres invalides.' });
   if (userId === friendId) return reply.status(400).send({ error: 'Impossible de s\'ajouter soi-même.' });
@@ -355,8 +362,8 @@ app.post('/api/friends/:id', { preHandler: (app as any).requireAuth }, async (re
   reply.send({ success: true });
 });
 
-app.post('/api/friends/:id/accept', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
-  const userId = req.user.id;
+app.post('/api/friends/:id/accept', async (req: any, reply: any) => {
+  const userId = req.userId;
   const requestId = parseInt((req.params as any).id, 10);
   if (!userId || !requestId) return reply.status(400).send({ error: 'Paramètres invalides.' });
 
@@ -376,8 +383,8 @@ app.post('/api/friends/:id/accept', { preHandler: (app as any).requireAuth }, as
   reply.send({ success: true });
 });
 
-app.delete('/api/friends/:id', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
-  const userId = req.user.id;
+app.delete('/api/friends/:id', async (req: any, reply: any) => {
+  const userId = req.userId;
   const friendId = parseInt((req.params as any).id, 10);
   if (!userId || !friendId) return reply.status(400).send({ error: 'Paramètres invalides.' });
 
@@ -421,8 +428,8 @@ app.post('/api/matches', async (req: any, reply: any) => {
 });
 
 // Endpoint pour récupérer l'historique des matches d'un utilisateur
-app.get('/api/matches/history', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
-  const userId = req.user.id;
+app.get('/api/matches/history', async (req: any, reply: any) => {
+  const userId = req.userId;
   if (!userId) {
     return reply.status(401).send({ error: 'Non authentifié' });
   }

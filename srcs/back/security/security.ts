@@ -37,16 +37,8 @@ export default fp(async (fastify: any) => {
 
   fastify.decorate('requireAuth', async (req: any, reply: any) => {
     try {
-      // Try cookie first, then authorization header
-      if (req.cookies?.token) {
-        const token = req.cookies.token;
-        const payload = fastify.jwt.verify(token);
-        req.user = payload;
-      } else {
-        await req.jwtVerify();
-      }
-    } catch (error) {
-      console.log('JWT Auth Error:', String(error));
+      await (req as any).jwtVerify();
+    } catch {
       return reply.code(401).send({ error: 'Unauthorized' });
     }
   });

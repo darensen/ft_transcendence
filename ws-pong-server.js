@@ -63,14 +63,13 @@ wss.on('connection', ws => {
         waiting.room = room;
         ws.room = room;
         rooms.push(room);
-        waiting.send(JSON.stringify({ type: 'match_found', playernumber: 1 , opponent_name: ws.displayName }));
-        ws.send(JSON.stringify({ type: 'match_found', playernumber: 2, opponent_name: waiting.displayName }));
+        waiting.send(JSON.stringify({ type: 'match_found', playernumber: 1 }));
+        ws.send(JSON.stringify({ type: 'match_found', playernumber: 2 }));
         waiting.send(JSON.stringify({ type: 'canvas_size', width, height }));
         ws.send(JSON.stringify({ type: 'canvas_size', width, height }));
         waiting = null;
         startGameLoop(room);
       } else {
-        ws.username = data.displayName;
         waiting = ws;
       }
     }
