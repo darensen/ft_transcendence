@@ -1,99 +1,167 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+# ModSecurity + OWASP CRS test script (POSIX /bin/sh compatible)
+set -eu
 
-# =========================
-# Config
-# =========================
+# ========= Config =========
 BASE_URL="${BASE_URL:-https://localhost}"
 PORT="${PORT:-443}"
 TARGET="${BASE_URL}:${PORT}"
 
-# Si besoin d'un token (endpoints protégés), exporte: AUTH="Authorization: Bearer xxx"
+# Optionnel : entête d’auth si besoin (ex: AUTH="Authorization: Bearer TOKEN")
 AUTH="${AUTH:-}"
 
-# self-signed -> -k ; mode verbeux désactivé par défaut
-CURL_OPTS=( -s -S -k --http1.1 --max-time 15 )
-[[ -n "${AUTH}" ]] && CURL_OPTS+=( -H "${AUTH}" )
+CURL_BASE_OPTS="-s -S -k --http1.1 --max-time 15"
+[ -n "$AUTH" ] && AUTH_OPT="-H $AUTH" || AUTH_OPT=""
 
-# Petite aide pour afficher si c'est bloqué
-is_blocked() { [[ "$1" == "403" || "$1" == "406" || "$1" == "401" || "$1" == "501" ]]; }
-
-req() {
-  local name="$1" method="$2" path="$3"
-  shift 3
-  local url="${TARGET}${path}"
-  local http_code
-
-  if [[ "$method" == "GET" ]]; then
-    http_code=$(curl "${CURL_OPTS[@]}" -o /dev/null -w "%{http_code}" "$@" "$url")
-  else
-    http_code=$(curl "${CURL_OPTS[@]}" -o /dev/null -w "%{http_code}" "$@" "$url")
-  fi
-
-  if is_blocked "$http_code"; then
-    printf "🛡️  %-24s -> %s (BLOQUÉ ✅)\n" "$name" "$http_code"
-  else
-    printf "⚠️  %-24s -> %s (non bloqué)\n" "$name" "$http_code"
-  fi
+print_result() {
+  name="$1"; code="$2"
+  case "$code" in
+    403|406|401|501)
+      printf "🛡️  %-24s -> %s (BLOQUÉ ✅)\n" "$name" "$code"
+      ;;
+    *)
+      printf "⚠️  %-24s -> %s (non bloqué)\n" "$name" "$code"
+      ;;
+  esac
 }
 
 echo "== Tests ModSecurity/OWASP CRS sur ${TARGET} =="
 
-# ------------------------
-# /api/ping
-# ------------------------
-req "CTRL /api/ping" GET "/api/ping"
+# -------- /api/ping --------
+# CTRL
+code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" $AUTH_OPT "$TARGET/api/ping")
+print_result "CTRL /api/ping" "$code"
 
-# XSS via querystring
-req "XSS /api/ping" GET "/api/ping?q=%3Cscript%3Ealert(1)%3C%2Fscript%3E"
-# SQLi-like
-req "SQLi /api/ping" GET "/api/ping?id=1%27%20OR%20%271%27%3D%271"
-# LFI-like
-req "LFI /api/ping" GET "/api/ping?file=../../etc/passwd"
-# UA suspecte (sqlmap)
-req "Bad UA /api/ping" GET "/api/ping" -H "User-Agent: sqlmap/1.7"
+# XSS
+code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" $AUTH_OPT \
+  "$TARGET/api/ping?q=%3Cscript%3Ealert(1)%3C%2Fscript%3E")
+print_result "XSS /api/ping" "$code"
 
-# ------------------------
-# /api/login (POST JSON)
-# ------------------------
-req "CTRL /api/login" POST "/api/login" \
-  -H "Content-Type: application/json" \
-  -X POST -d '{"username":"demo","password":"demo"}'
+# SQLi
+code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" $AUTH_OPT \
+  "$TARGET/api/ping?id=1%27%20OR%20%271%27%3D%271")
+print_result "SQLi /api/ping" "$code"
 
-req "XSS /api/login" POST "/api/login" \
-  -H "Content-Type: application/json" \
-  -X POST -d '{"username":"<script>alert(1)</script>","password":"x"}'
+# LFI
+code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" $AUTH_OPT \
+  "$TARGET/api/ping?file=../../etc/passwd")
+print_result "LFI /api/ping" "$code"
 
-req "SQLi /api/login" POST "/api/login" \
-  -H "Content-Type: application/json" \
-  -X POST -d '{"username":"admin","password":"x'\'' OR '\''1'\''='\''1"}'
+# User-Agent suspect
+code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" $AUTH_OPT \
+  -H "User-Agent: sqlmap/1.7" "$TARGET/api/ping")
+print_result "Bad UA /api/ping" "$code"
 
-req "Cmd inj /api/login" POST "/api/login" \
-  -H "Content-Type: application/json" \
-  -X POST -d '{"username":"u","password":"x; id"}'
+# -------- /api/login (JSON) --------
+# CTRL (JSON valide, conforme à ton schéma : email+password requis, otp optionnel)
+if [ -n "$AUTH" ]; then
+  code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" -H 'Content-Type: application/json' -H "$AUTH" \
+    -X POST "$TARGET/api/login" --data-binary @- <<'JSON'
+{"email":"test@example.com","password":"juste-un-test","otp":"123456"}
+JSON
+)
+else
+  code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" -H 'Content-Type: application/json' \
+    -X POST "$TARGET/api/login" --data-binary @- <<'JSON'
+{"email":"test@example.com","password":"juste-un-test","otp":"123456"}
+JSON
+)
+fi
+print_result "CTRL /api/login" "$code"
 
-# ------------------------
-# /api/me/avatar (POST upload)
-# ------------------------
-# Fichier factice à uploader
+# XSS dans password
+if [ -n "$AUTH" ]; then
+  code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" -H 'Content-Type: application/json' -H "$AUTH" \
+    -X POST "$TARGET/api/login" --data-binary @- <<'JSON'
+{"email":"test@example.com","password":"<script>alert(1)</script>","otp":"123456"}
+JSON
+)
+else
+  code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" -H 'Content-Type: application/json' \
+    -X POST "$TARGET/api/login" --data-binary @- <<'JSON'
+{"email":"test@example.com","password":"<script>alert(1)</script>","otp":"123456"}
+JSON
+)
+fi
+print_result "XSS /api/login" "$code"
+
+# SQLi dans password (apostrophes incluses)
+if [ -n "$AUTH" ]; then
+  code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" -H 'Content-Type: application/json' -H "$AUTH" \
+    -X POST "$TARGET/api/login" --data-binary @- <<'JSON'
+{"email":"test@example.com","password":"x' OR '1'='1","otp":"123456"}
+JSON
+)
+else
+  code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" -H 'Content-Type: application/json' \
+    -X POST "$TARGET/api/login" --data-binary @- <<'JSON'
+{"email":"test@example.com","password":"x' OR '1'='1","otp":"123456"}
+JSON
+)
+fi
+print_result "SQLi /api/login" "$code"
+
+# Command injection dans password
+if [ -n "$AUTH" ]; then
+  code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" -H 'Content-Type: application/json' -H "$AUTH" \
+    -X POST "$TARGET/api/login" --data-binary @- <<'JSON'
+{"email":"test@example.com","password":"foo; cat /etc/passwd","otp":"123456"}
+JSON
+)
+else
+  code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" -H 'Content-Type: application/json' \
+    -X POST "$TARGET/api/login" --data-binary @- <<'JSON'
+{"email":"test@example.com","password":"foo; cat /etc/passwd","otp":"123456"}
+JSON
+)
+fi
+print_result "Cmd inj /api/login" "$code"
+
+# -------- /api/me/avatar (upload) --------
 TMP_FILE="$(mktemp)"
-echo '<?php echo "x"; ?>' > "$TMP_FILE"   # contenu suspect pour déclencher CRS
+# contenu au format "suspect" pour exciter quelques règles
+printf '%s\n' '<?php echo "x"; ?>' > "$TMP_FILE"
 
-# Upload simple
-req "CTRL avatar upload" POST "/api/me/avatar" \
-  -F "avatar=@${TMP_FILE};type=image/png;filename=avatar.png"
+# Upload "normal"
+if [ -n "$AUTH" ]; then
+  code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" -H "$AUTH" \
+    -X POST "$TARGET/api/me/avatar" \
+    -F "avatar=@${TMP_FILE};type=image/png;filename=avatar.png")
+else
+  code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" \
+    -X POST "$TARGET/api/me/avatar" \
+    -F "avatar=@${TMP_FILE};type=image/png;filename=avatar.png")
+fi
+print_result "CTRL avatar upload" "$code"
 
-# Nom de fichier avec traversal
-req "Avatar filename LFI" POST "/api/me/avatar" \
-  -F "avatar=@${TMP_FILE};type=image/png;filename=../../etc/passwd"
+# Filename traversal
+if [ -n "$AUTH" ]; then
+  code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" -H "$AUTH" \
+    -X POST "$TARGET/api/me/avatar" \
+    -F "avatar=@${TMP_FILE};type=image/png;filename=../../etc/passwd")
+else
+  code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" \
+    -X POST "$TARGET/api/me/avatar" \
+    -F "avatar=@${TMP_FILE};type=image/png;filename=../../etc/passwd")
+fi
+print_result "Avatar filename LFI" "$code"
 
-# Type MIME louche + champ additionnel douteux
-req "Avatar weird MIME" POST "/api/me/avatar" \
-  -F "avatar=@${TMP_FILE};type=text/php;filename=avatar.php" \
-  -F "meta=<script>alert(1)</script>"
+# MIME louche + champ meta xss
+if [ -n "$AUTH" ]; then
+  code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" -H "$AUTH" \
+    -X POST "$TARGET/api/me/avatar" \
+    -F "avatar=@${TMP_FILE};type=text/php;filename=avatar.php" \
+    -F "meta=<script>alert(1)</script>")
+else
+  code=$(curl $CURL_BASE_OPTS -o /dev/null -w "%{http_code}" \
+    -X POST "$TARGET/api/me/avatar" \
+    -F "avatar=@${TMP_FILE};type=text/php;filename=avatar.php" \
+    -F "meta=<script>alert(1)</script>")
+fi
+print_result "Avatar weird MIME" "$code"
 
 rm -f "$TMP_FILE"
 
 echo
-echo "Astuce: vérifie les logs ModSecurity pour voir quelles règles ont matché :"
-echo "  docker compose exec nginx sh -lc 'tail -n 100 /var/log/modsecurity/modsec_audit.log'"
+echo "Astuce : inspecte les règles qui matchent dans les logs ModSecurity :"
+echo "  docker compose exec nginx sh -lc 'tail -n 120 /var/log/modsecurity/modsec_audit.log'"
