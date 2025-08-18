@@ -1,11 +1,13 @@
 const WebSocket = require('ws');
-const wss = new WebSocket.Server({ port: 8082 });
+const wss = new WebSocket.Server({ 
+  port: 8082,
+  host: '0.0.0.0'
+});
 
 let slots = [null, null, null, null];
 let clients = [null, null, null, null];
 let winners = [];
 
-// Fonction pour sauvegarder un match dans la base de données
 async function saveMatch(player1Id, player2Id, player1Score, player2Score, matchType) {
   try {
     const response = await fetch('http://backend:3000/api/matches', {
@@ -96,7 +98,6 @@ function createPongRoom(playerA, playerB, matchId) {
   }
 
   async function loop() {
-    // Vérifier si le match est déjà terminé
     if (gameEnded) return;
     
     if (!playing) {
@@ -123,6 +124,9 @@ function createPongRoom(playerA, playerB, matchId) {
       state.ball.vx *= -1;
       let hitPos = (state.ball.y - state.paddle1.y - paddleH/2) / (paddleH/2);
       state.ball.vy += hitPos * 2;
+      // Augmenter la vitesse de la balle à chaque rebond
+      state.ball.vx *= 1.05; // Augmente la vitesse horizontale de 5%
+      state.ball.vy *= 1.05; // Augmente la vitesse verticale de 5%
     }
     if (
       state.ball.x > width - 30 - paddleW &&
@@ -134,14 +138,17 @@ function createPongRoom(playerA, playerB, matchId) {
       state.ball.vx *= -1;
       let hitPos = (state.ball.y - state.paddle2.y - paddleH/2) / (paddleH/2);
       state.ball.vy += hitPos * 2;
+      // Augmenter la vitesse de la balle à chaque rebond
+      state.ball.vx *= 1.05; // Augmente la vitesse horizontale de 5%
+      state.ball.vy *= 1.05; // Augmente la vitesse verticale de 5%
     }
 
     let goal = false;
     if (state.ball.x < 0) { state.score2++; goal = true; }
     if (state.ball.x > width) { state.score1++; goal = true; }
 
-    state.ball.vx = Math.max(-8, Math.min(8, state.ball.vx));
-    state.ball.vy = Math.max(-6, Math.min(6, state.ball.vy));
+    state.ball.vx = Math.max(-12, Math.min(12, state.ball.vx));
+    state.ball.vy = Math.max(-10, Math.min(10, state.ball.vy));
 
     [playerA, playerB].forEach((ws, i) => {
       if (ws.readyState === 1) {
@@ -252,4 +259,4 @@ wss.on('connection', (ws) => {
     }
   });
 });
-console.log('Tournoi WebSocket server running on ws://localhost:8082');
+console.log('Tournoi WebSocket server running on ws://0.0.0.0:8082');

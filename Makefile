@@ -3,9 +3,8 @@ BACK_DIR=srcs/back
 
 .PHONY: all front back docker build up clean re
 
-all: front back ws-pong docker up
-ws-pong:
-	docker compose build websocket-pong
+all: front back
+	docker compose up --build
 
 front:
 	cd $(FRONT_DIR) && npm install && npx tsc
@@ -20,6 +19,8 @@ build: all
 
 up:
 	docker compose up
+down:
+	docker compose down
 
 clean:
 	cd $(FRONT_DIR) && rm -rf *.js *.js.map node_modules dist

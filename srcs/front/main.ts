@@ -34,23 +34,16 @@ const profileHistory = document.getElementById('profile-history') as HTMLDivElem
 const tournamentSection = document.getElementById('tournament-section') as HTMLDivElement | null;
 const pongPlayers = document.getElementById('pong-players') as HTMLDivElement | null;
 const tournoisBtn = document.getElementById('tournois-button') as HTMLButtonElement | null;
-
-// let pingInterval: number | undefined;
-
-
-// pingInterval = setInterval(async () => {
-//   const userId = localStorage.getItem('userId');
-//   if (userId) {
-//     console.log('Pinging server for user:', userId);
-//     await fetch('/api/ping', {
-//       method: 'POST',
-//       headers: { 'X-User-Id': userId }
-//     });
-//   }
-// }, 10_000);
-
+const localGameBtn = document.getElementById('local-game-button') as HTMLButtonElement | null;
 
 let pingInterval: number | undefined;
+let currentPublicUserId: number | null = null;
+
+// Variables globales pour les graphiques
+let winLossChart: any = null;
+let matchTypesChart: any = null;
+let publicWinLossChart: any = null;
+let publicMatchTypesChart: any = null;
 
 pingInterval = window.setInterval(async () => {
   try {
@@ -63,13 +56,83 @@ pingInterval = window.setInterval(async () => {
   }
 }, 10_000);
 
-// when you need to stop it:
-// if (pingInterval !== undefined) window.clearInterval(pingInterval);
-
-
-if (tournoisBtn && tournamentSection) {
+  if (tournoisBtn && tournamentSection) {
   tournoisBtn.addEventListener('click', () => {
     showView('tournament');
+  });
+}
+
+function createWinLossChart(ctx: any, wins: number, losses: number) {
+  return new (window as any).Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Victoires', 'Défaites'],
+      datasets: [{
+        data: [wins, losses],
+        backgroundColor: ['#22c55e', '#ef4444'],
+        borderColor: ['#16a34a', '#dc2626'],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#ffffff',
+            font: {
+              size: 12
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function createMatchTypesChart(ctx: any, normalMatches: number, tournamentMatches: number) {
+  return new (window as any).Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Parties normales', 'Parties de tournoi'],
+      datasets: [{
+        data: [normalMatches, tournamentMatches],
+        backgroundColor: ['#8b5cf6', '#f59e0b'],
+        borderColor: ['#7c3aed', '#d97706'],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: '#ffffff',
+            stepSize: 1
+          },
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)'
+          }
+        },
+        x: {
+          ticks: {
+            color: '#ffffff'
+          },
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)'
+          }
+        }
+      }
+    }
   });
 }
 
@@ -139,8 +202,13 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
         console.error('Failed to get canvas context');
         return;
       }
-      // ajout d'un boutton pour commencer le matchmaking
       let blurm_bg = document.getElementById('blurm-bg') as HTMLDivElement;
+
+      if (pongpage) {
+        const existingButtons = pongpage.querySelectorAll('button');
+        existingButtons.forEach(btn => btn.remove());
+      }
+
       const startMatchmakingBtn = document.createElement('button');
       startMatchmakingBtn.textContent = 'Commencer le matchmaking';
       startMatchmakingBtn.classList.add(
@@ -158,7 +226,7 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
         let gameState: any = null;
         let animationId: number | null = null;
         let finished: boolean = false;
-        ws = new WebSocket('ws://localhost:8081');
+        ws = new WebSocket(`wss://${location.host}/ws/pong`);
         ws.onopen = async () => {
           const response = await fetch('/api/me', {
             credentials: 'include'
@@ -300,16 +368,155 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
           function onKey(e: KeyboardEvent) {
             if (!playernumber) return;
             let changed = false;
+            const paddleSpeed = 18;
             if (playernumber === 1) {
-              if (e.key === 'ArrowUp' || e.key === 'z' || e.key === 'Z') { paddleY -= 10; changed = true; }
-              if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { paddleY += 10; changed = true; }
-            } else if (playernumber === 2) {
-              if (e.key === 'ArrowUp' || e.key === 'z' || e.key === 'Z') { paddleY -= 10; changed = true; }
-              if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { paddleY += 10; changed = true; }
-            }
+              if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { paddleY -= 10; changed = true; }
+                if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { paddleY += 10; changed = true; }
+              } else if (playernumber === 2) {
+                if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { paddleY -= 10; changed = true; }
+                if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { paddleY += 10; changed = true; }
+              }
             paddleY = Math.max(0, Math.min(canvas.height-paddleH, paddleY));
             if (changed) {
               ws.send(JSON.stringify({ type: 'paddle_move', y: paddleY }));
+            }
+          }
+          window.addEventListener('keydown', onKey);
+        }
+      });
+    });
+
+    localGameBtn?.addEventListener('click', () => {
+      canvas.classList.add('hidden');
+      gameSection.classList.add('hidden');
+      pongpage?.classList.remove('hidden');
+      if (!canvas) {
+        console.error('Canvas not found');
+        return;
+      }
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        console.error('Failed to get canvas context');
+        return;
+      }
+
+      // Nettoyer les boutons existants avant d'ajouter le nouveau
+      if (pongpage) {
+        const existingButtons = pongpage.querySelectorAll('button');
+        existingButtons.forEach(btn => btn.remove());
+      }
+
+      const startLocalGameBtn = document.createElement('button');
+      startLocalGameBtn.textContent = 'Commencer le jeu local';
+      startLocalGameBtn.classList.add(
+        'bg-gray-900', 'text-white', 'px-4', 'py-2', 'rounded', 'border', 'border-gray-700', 'hover:bg-gray-800',
+        'absolute', 'top-1/2', 'left-1/2', 'transform', '-translate-x-1/2', '-translate-y-1/2'
+      );
+      pongpage?.appendChild(startLocalGameBtn);
+      
+      startLocalGameBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        let ws: WebSocket;
+        let gameState: any = null;
+        let animationId: number | null = null;
+        let finished: boolean = false;
+
+        // Use WSS via Nginx reverse proxy
+        ws = new WebSocket(`wss://${location.host}/ws/pong`);
+        ws.onopen = () => {
+          ws.send(JSON.stringify({ type: 'join_local' }));
+        };
+        
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.type === 'local_game_started') {
+            canvas.classList.remove('hidden');
+            startLocalPongGame();
+          } else if (data.type === 'game_state') {
+            gameState = data.state;
+          } else if (data.type === 'game_over') {
+            if (finished) return;
+            finished = true;
+            alert(`Fin de partie ! Score final: ${data.score1} - ${data.score2}. Gagnant: ${data.winner}`);
+            showView('game');
+          }
+        };
+
+        function startLocalPongGame() {
+          if (!canvas) return;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return;
+          let paddle1Y = 150;
+          let paddle2Y = 150;
+          const paddleH = 80;
+          const paddleW = 10;
+          const paddleSpeed = 18;
+          const height = 400;
+          const width = 800;
+          
+          function draw() {
+            if (!gameState || !ctx) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#222';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#fff';
+            ctx.beginPath();
+            ctx.setLineDash([10, 10]);
+            ctx.moveTo(canvas.width/2, 0); 
+            ctx.lineTo(canvas.width/2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(20, gameState.paddle1.y, paddleW, paddleH);
+            ctx.fillRect(canvas.width-30, gameState.paddle2.y, paddleW, paddleH);
+            ctx.beginPath();
+            ctx.arc(gameState.ball.x, gameState.ball.y, 10, 0, 2*Math.PI);
+            ctx.fill();
+            ctx.font = '32px Arial';
+            ctx.fillText(gameState.score1, canvas.width/2-50, 40);
+            ctx.fillText(gameState.score2, canvas.width/2+30, 40);
+
+            ctx.font = '14px Arial';
+            // ctx.fillText('Joueur 1: W/S', 20, height - 20);
+            // ctx.fillText('Joueur 2: ↑/↓', width - 120, height - 20);
+          }
+          
+          function gameLoop() {
+            draw();
+            animationId = requestAnimationFrame(gameLoop);
+          }
+          gameLoop();
+          
+          function onKey(e: KeyboardEvent) {
+            let changed1 = false;
+            let changed2 = false;
+            
+            if (e.key === 'w' || e.key === 'W') { 
+              paddle1Y -= paddleSpeed; 
+              changed1 = true; 
+            }
+            if (e.key === 's' || e.key === 'S') { 
+              paddle1Y += paddleSpeed; 
+              changed1 = true; 
+            }
+
+            if (e.key === 'ArrowUp') { 
+              paddle2Y -= paddleSpeed; 
+              changed2 = true; 
+            }
+            if (e.key === 'ArrowDown') { 
+              paddle2Y += paddleSpeed; 
+              changed2 = true; 
+            }
+
+            paddle1Y = Math.max(0, Math.min(canvas.height - paddleH, paddle1Y));
+            paddle2Y = Math.max(0, Math.min(canvas.height - paddleH, paddle2Y));
+
+            if (changed1) {
+              ws.send(JSON.stringify({ type: 'paddle_move', player: 1, y: paddle1Y }));
+            }
+            if (changed2) {
+              ws.send(JSON.stringify({ type: 'paddle_move', player: 2, y: paddle2Y }));
             }
           }
           window.addEventListener('keydown', onKey);
@@ -336,19 +543,35 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
       renderFriendsList();
       renderFriendRequests();
       addLogoutButton();
-      // Charger l'historique par défaut si l'onglet historique est actif
       const historyPanel = document.getElementById('profile-history-panel');
       if (historyPanel && !historyPanel.classList.contains('hidden')) {
         renderMatchHistory();
       }
+      setTimeout(() => {
+        renderMatchHistory();
+      }, 100);
     });
   } else if (view === 'public-profile' && publicUser) {
+    currentPublicUserId = publicUser.id; // Stocker l'ID pour utilisation ultérieure
     homeSection.classList.remove('hidden');
     bg_blur?.classList.remove('hidden');
     if (publicProfileSection) publicProfileSection.classList.remove('hidden');
     if (publicProfileAvatarImg) publicProfileAvatarImg.src = (publicUser.avatar || '/avatars/default.png') + '?t=' + Date.now();
     if (publicProfileEmail) publicProfileEmail.textContent = publicUser.email;
     if (publicProfileDisplayName) publicProfileDisplayName.textContent = publicUser.displayName;
+
+    const publicTabInfo = document.getElementById('public-profile-tab-info');
+    const publicTabHistory = document.getElementById('public-profile-tab-history');
+    const publicInfoPanel = document.getElementById('public-profile-info-panel');
+    const publicHistoryPanel = document.getElementById('public-profile-history-panel');
+    
+    if (publicTabInfo && publicTabHistory && publicInfoPanel && publicHistoryPanel) {
+      publicTabInfo.classList.add('bg-blue-600');
+      publicTabHistory.classList.remove('bg-blue-600');
+      publicTabHistory.classList.add('bg-gray-800');
+      publicInfoPanel.classList.remove('hidden');
+      publicHistoryPanel.classList.add('hidden');
+    }
 
     let statusDot = document.getElementById('public-profile-status-dot');
     let statusText = document.getElementById('public-profile-status-text');
@@ -372,13 +595,31 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
     statusDot.style.backgroundColor = publicUser.online ? '#22c55e' : '#ef4444';
     statusText.textContent = publicUser.online ? 'en ligne' : 'hors ligne';
 
+    renderPublicProfileStats(publicUser.id);
+    // Charger l'historique dès l'affichage du profil public
+    renderPublicMatchHistory(publicUser.id);
+
     fetch('/api/me', { credentials: 'include' })
       .then(async (res) => (res.ok ? res.json() : null))
-      .then(me => {
+      .then(async me => {
         if (addFriendBtn) {
           if (me && me.displayName && publicUser.displayName && me.displayName !== publicUser.displayName) {
-            addFriendBtn.classList.remove('hidden');
-            addFriendBtn.setAttribute('data-userid', publicUser.id);
+            const friendsRes = await fetch('/api/friends', { credentials: 'include' });
+            if (friendsRes.ok) {
+              const friends = await friendsRes.json();
+              const isAlreadyFriend = friends.some((friend: any) => friend.id === publicUser.id);
+              
+              if (isAlreadyFriend) {
+                addFriendBtn.classList.add('hidden');
+                addFriendBtn.removeAttribute('data-userid');
+              } else {
+                addFriendBtn.classList.remove('hidden');
+                addFriendBtn.setAttribute('data-userid', publicUser.id);
+              }
+            } else {
+              addFriendBtn.classList.remove('hidden');
+              addFriendBtn.setAttribute('data-userid', publicUser.id);
+            }
           } else {
             addFriendBtn.classList.add('hidden');
             addFriendBtn.removeAttribute('data-userid');
@@ -386,6 +627,7 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
         }
       });
   } else {
+    currentPublicUserId = null; // Réinitialiser l'ID quand on quitte le profil public
     if (addFriendBtn) {
       addFriendBtn.classList.add('hidden');
       addFriendBtn.removeAttribute('data-userid');
@@ -405,12 +647,13 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
   } else {
     if (!pingInterval) {
       pingInterval = setInterval(async () => {
-        const userId = localStorage.getItem('userId');
-        if (userId) {
+        try {
           await fetch('/api/ping', {
             method: 'POST',
-            headers: { 'X-User-Id': userId }
+            credentials: 'include'
           });
+        } catch (error) {
+          console.error('Ping failed:', error);
         }
       }, 10_000) as unknown as number;
     }
@@ -434,47 +677,6 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
 showRegisterBtn.addEventListener('click', () => {
   showView('register');
 });
-
-// registerForm.addEventListener('submit', async (e) => {
-//   e.preventDefault();
-//   const email = (document.getElementById('reg-email') as HTMLInputElement).value.trim();
-//   const password = (document.getElementById('reg-password') as HTMLInputElement).value.trim();
-//   const displayName = (document.getElementById('reg-displayName') as HTMLInputElement).value.trim();
-//   if (!email || !password || !displayName) {
-//     alert('Veuillez remplir tous les champs.');
-//     return;
-//   }
-//   const res = await fetch('/api/register', {
-//     method: 'POST',
-//     headers: { 'Content-Type': 'application/json' },
-//     body: JSON.stringify({ email, password, displayName })
-//   });
-//   if (res.ok) {
-//     const user = await res.json();
-//     if (regAvatar && regAvatar.files && regAvatar.files[0]) {
-//       const formData = new FormData();
-//       formData.append('file', regAvatar.files[0]);
-//       formData.append('userId', user.id);
-//       await fetch('/api/me/avatar', {
-//         method: 'POST',
-//         body: formData
-//       });
-//     }
-//     const loginRes = await fetch('/api/login', {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ email, password })
-//     });
-//     if (loginRes.ok){
-//       alert('Compte créé, veuillez vous connecter.');
-//       showView('login');
-//     }
-//   } else {
-//     const data = await res.json();
-//     alert(data.error || 'Erreur lors de la création du compte');
-//   }
-// });
-
 
 registerForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -503,31 +705,6 @@ registerForm.addEventListener('submit', async (e) => {
   showView('login');
 });
 
-
-// loginForm.addEventListener('submit', async (e) => {
-//   e.preventDefault();
-//   const email = (document.getElementById('email') as HTMLInputElement).value.trim();
-//   const password = (document.getElementById('password') as HTMLInputElement).value.trim();
-//   if (!email || !password) {
-//     alert('Veuillez remplir tous les champs.');
-//     return;
-//   }
-//   const res = await fetch('/api/login', {
-//     method: 'POST',
-//     headers: { 'Content-Type': 'application/json' },
-//     body: JSON.stringify({ email, password })
-//   });
-//   if (res.ok) {
-//     const user = await res.json();
-//     localStorage.setItem('userId', user.id);
-//     showView('home');
-//   } else {
-//     const data = await res.json();
-//     alert(data.error || 'Erreur de connexion');
-//   }
-// });
-
-
 loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = (document.getElementById('email') as HTMLInputElement).value.trim();
@@ -542,7 +719,7 @@ loginForm.addEventListener('submit', async (e) => {
     return fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', // <- HttpOnly cookie
+      credentials: 'include',
       body: JSON.stringify({ email, password, otp })
     });
   };
@@ -564,12 +741,12 @@ loginForm.addEventListener('submit', async (e) => {
     return;
   }
 
-  // Optional: fetch /api/me to know who is logged in and store the ID if you use it elsewhere.
   try {
     const meRes = await fetch('/api/me', { credentials: 'include' });
     if (meRes.ok) {
       const me = await meRes.json();
-      localStorage.setItem('userId', me.id); // only if your app expects this
+      localStorage.setItem('userId', me.id);
+      console.log('Connexion réussie - l\'historique sera rechargé automatiquement');
     }
   } catch {}
 
@@ -601,53 +778,6 @@ if (backHomeProfileBtn) {
   });
 }
 
-// if (profileForm) {
-//   profileForm.addEventListener('submit', async (e) => {
-//     e.preventDefault();
-//     if (!profileEmail || !profileDisplayName) return;
-//     const email = profileEmail.value.trim();
-//     const displayName = profileDisplayName.value.trim();
-
-//     if (profileAvatar && profileAvatar.files && profileAvatar.files[0]) {
-//       if (profileAvatar.files[0].size > 50 * 1024) {
-//         alert('Avatar trop volumineux (max 50kb).');
-//         return;
-//       }
-//     }
-
-//     const res = await fetch('/api/me', {
-//       method: 'PUT',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ email, displayName })
-//     });
-//     let avatarUrl: string | undefined;
-//     if (profileAvatar && profileAvatar.files && profileAvatar.files[0]) {
-//       const userRes = await fetch('/api/me');
-//       const user = await userRes.json();
-//       const formData = new FormData();
-//       formData.append('file', profileAvatar.files[0]);
-//       const avatarRes = await fetch('/api/me/avatar', {
-//         method: 'POST',
-//         body: formData
-//       });
-//       if (avatarRes.ok) {
-//         const data = await avatarRes.json();
-//         avatarUrl = data.avatar;
-//       }
-//     }
-//     if (res.ok) {
-//       alert('Profil mis à jour !');
-//       if (avatarUrl && profileAvatarImg) {
-//         profileAvatarImg.src = avatarUrl + '?t=' + Date.now();
-//       }
-//       showView('profile', false);
-//     } else {
-//       const data = await res.json();
-//       alert(data.error || 'Erreur lors de la mise à jour');
-//     }
-//   });
-// }
-
 if (profileForm) {
   profileForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -665,15 +795,14 @@ if (profileForm) {
     const res = await fetch('/api/me', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',                 // <- add this
+      credentials: 'include',
       body: JSON.stringify({ email, displayName })
     });
 
     let avatarUrl: string | undefined;
 
     if (profileAvatar && profileAvatar.files && profileAvatar.files[0]) {
-      // If you still need the user object, fetch it with credentials too
-      const userRes = await fetch('/api/me', { credentials: 'include' }); // <- add this
+      const userRes = await fetch('/api/me', { credentials: 'include' });
       const user = await userRes.json();
 
       const formData = new FormData();
@@ -681,7 +810,7 @@ if (profileForm) {
 
       const avatarRes = await fetch('/api/me/avatar', {
         method: 'POST',
-        credentials: 'include',               // <- add this
+        credentials: 'include',
         body: formData
       });
 
@@ -749,7 +878,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const deleteAvatarBtn = document.getElementById('delete-avatar');
   if (deleteAvatarBtn) {
     deleteAvatarBtn.addEventListener('click', async () => {
-      // await fetch('/api/me/avatar', { method: 'DELETE' });
       await fetch('/api/me/avatar', { method: 'DELETE', credentials: 'include' });
       showView('profile', false);
     });
@@ -761,17 +889,51 @@ document.addEventListener('DOMContentLoaded', () => {
   const historyPanel = document.getElementById('profile-history-panel');
   if (tabInfo && tabHistory && infoPanel && historyPanel) {
     tabInfo.addEventListener('click', () => {
-      tabInfo.classList.add('bg-gray-700');
-      tabHistory.classList.remove('bg-gray-700');
+      tabInfo.classList.add('bg-blue-600');
+      tabInfo.classList.remove('bg-gray-800');
+      tabHistory.classList.remove('bg-blue-600');
+      tabHistory.classList.add('bg-gray-800');
       infoPanel.classList.remove('hidden');
       historyPanel.classList.add('hidden');
     });
     tabHistory.addEventListener('click', () => {
-      tabHistory.classList.add('bg-gray-700');
-      tabInfo.classList.remove('bg-gray-700');
+      tabHistory.classList.add('bg-blue-600');
+      tabHistory.classList.remove('bg-gray-800');
+      tabInfo.classList.remove('bg-blue-600');
+      tabInfo.classList.add('bg-gray-800');
       infoPanel.classList.add('hidden');
       historyPanel.classList.remove('hidden');
-      renderMatchHistory(); // Charger l'historique quand l'onglet est ouvert
+      renderMatchHistory();
+    });
+  }
+
+  const publicTabInfo = document.getElementById('public-profile-tab-info');
+  const publicTabHistory = document.getElementById('public-profile-tab-history');
+  const publicInfoPanel = document.getElementById('public-profile-info-panel');
+  const publicHistoryPanel = document.getElementById('public-profile-history-panel');
+  
+  if (publicTabInfo && publicTabHistory && publicInfoPanel && publicHistoryPanel) {
+    publicTabInfo.addEventListener('click', () => {
+      publicTabInfo.classList.add('bg-blue-600');
+      publicTabInfo.classList.remove('bg-gray-800');
+      publicTabHistory.classList.remove('bg-blue-600');
+      publicTabHistory.classList.add('bg-gray-800');
+      publicInfoPanel.classList.remove('hidden');
+      publicHistoryPanel.classList.add('hidden');
+    });
+    
+    publicTabHistory.addEventListener('click', () => {
+      publicTabHistory.classList.add('bg-blue-600');
+      publicTabHistory.classList.remove('bg-gray-800');
+      publicTabInfo.classList.remove('bg-blue-600');
+      publicTabInfo.classList.add('bg-gray-800');
+      publicInfoPanel.classList.add('hidden');
+      publicHistoryPanel.classList.remove('hidden');
+
+      // Utiliser la variable globale pour charger l'historique
+      if (currentPublicUserId) {
+        renderPublicMatchHistory(currentPublicUserId);
+      }
     });
   }
 });
@@ -783,8 +945,7 @@ async function renderMatchHistory() {
 
   try {
     console.log('Fetching match history...');
-    
-    // D'abord récupérer les infos de l'utilisateur actuel
+
     const userRes = await fetch('/api/me', { credentials: 'include' });
     if (!userRes.ok) {
       historyList.textContent = 'Erreur d\'authentification.';
@@ -808,11 +969,20 @@ async function renderMatchHistory() {
     
     if (matches.length === 0) {
       historyList.textContent = 'Aucune partie jouée pour le moment.';
-      statsDiv.innerHTML = '<p>Aucune statistique disponible.</p>';
+      // Nettoyer les graphiques existants s'il n'y a pas de données
+      const totalWinsEl = document.getElementById('total-wins');
+      const totalLossesEl = document.getElementById('total-losses');
+      const winRateEl = document.getElementById('win-rate');
+      const totalMatchesEl = document.getElementById('total-matches');
+      
+      if (totalWinsEl) totalWinsEl.textContent = '0';
+      if (totalLossesEl) totalLossesEl.textContent = '0';
+      if (winRateEl) winRateEl.textContent = '0%';
+      if (totalMatchesEl) totalMatchesEl.textContent = '0';
+      
       return;
     }
 
-    // Afficher l'historique des matches
     historyList.innerHTML = matches.map((match: any) => {
       const isWinner = match.isWinner;
       const opponent = match.player1.id === currentUser.id ? match.player2 : match.player1;
@@ -832,7 +1002,7 @@ async function renderMatchHistory() {
         <div class="bg-gray-800 p-3 rounded mb-2">
           <div class="flex justify-between items-center mb-2">
             <div class="flex items-center">
-              <span class="font-semibold">vs ${opponent.displayName}</span>
+              <span class="font-semibold">vs ${opponent.displayName}    </span>
               <img src="${opponent.avatar || '/avatars/default.png'}" class="w-8 h-8 rounded-full mr-2" alt="Avatar">
             </div>
             <div class="text-lg font-bold ${isWinner ? 'text-green-400' : 'text-red-400'}">
@@ -850,7 +1020,6 @@ async function renderMatchHistory() {
       `;
     }).join('');
 
-    // Calculer et afficher les statistiques
     const totalMatches = matches.length;
     const wins = matches.filter((match: any) => match.isWinner).length;
     const losses = totalMatches - wins;
@@ -859,36 +1028,173 @@ async function renderMatchHistory() {
     const tournamentMatches = matches.filter((match: any) => match.matchType.startsWith('TOURNAMENT'));
     const normalMatches = matches.filter((match: any) => match.matchType === 'NORMAL');
     
-    statsDiv.innerHTML = `
-      <div class="grid grid-cols-2 gap-4">
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-green-400 font-semibold">Victoires</h4>
-          <p class="text-2xl font-bold">${wins}</p>
+    // Mettre à jour les statistiques textuelles
+    const totalWinsEl = document.getElementById('total-wins');
+    const totalLossesEl = document.getElementById('total-losses');
+    const winRateEl = document.getElementById('win-rate');
+    const totalMatchesEl = document.getElementById('total-matches');
+    
+    if (totalWinsEl) totalWinsEl.textContent = wins.toString();
+    if (totalLossesEl) totalLossesEl.textContent = losses.toString();
+    if (winRateEl) winRateEl.textContent = `${winRate}%`;
+    if (totalMatchesEl) totalMatchesEl.textContent = totalMatches.toString();
+
+    // Créer les graphiques
+    setTimeout(() => {
+      // Détruire les graphiques existants
+      if (winLossChart) winLossChart.destroy();
+      if (matchTypesChart) matchTypesChart.destroy();
+
+      // Créer les nouveaux graphiques
+      const winLossCtx = document.getElementById('winLossChart') as HTMLCanvasElement;
+      const matchTypesCtx = document.getElementById('matchTypesChart') as HTMLCanvasElement;
+
+      if (winLossCtx) {
+        winLossChart = createWinLossChart(winLossCtx.getContext('2d'), wins, losses);
+      }
+      
+      if (matchTypesCtx) {
+        matchTypesChart = createMatchTypesChart(matchTypesCtx.getContext('2d'), normalMatches.length, tournamentMatches.length);
+      }
+    }, 100);
+
+  } catch (error) {
+    console.error('Erreur lors du chargement de l\'historique:', error);
+    historyList.textContent = 'Erreur lors du chargement de l\'historique.';
+  }
+}
+
+async function renderPublicProfileStats(userId: number) {
+  const statsDiv = document.getElementById('public-profile-stats');
+  if (!statsDiv) return;
+
+  try {
+    const res = await fetch(`/api/matches/history/${userId}`, { credentials: 'include' });
+    
+    if (!res.ok) {
+      statsDiv.textContent = 'Impossible de charger les statistiques.';
+      return;
+    }
+
+    const matches = await res.json();
+    
+    if (matches.length === 0) {
+      statsDiv.textContent = 'Aucune partie jouée pour le moment.';
+      return;
+    }
+
+    const totalMatches = matches.length;
+    const wins = matches.filter((match: any) => match.isWinner).length;
+    const losses = totalMatches - wins;
+    const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
+    
+    const tournamentMatches = matches.filter((match: any) => match.matchType.startsWith('TOURNAMENT'));
+    const normalMatches = matches.filter((match: any) => match.matchType === 'NORMAL');
+    
+    // Mettre à jour les statistiques textuelles du profil public
+    const publicTotalWinsEl = document.getElementById('public-total-wins');
+    const publicTotalLossesEl = document.getElementById('public-total-losses');
+    const publicWinRateEl = document.getElementById('public-win-rate');
+    const publicTotalMatchesEl = document.getElementById('public-total-matches');
+    
+    if (publicTotalWinsEl) publicTotalWinsEl.textContent = wins.toString();
+    if (publicTotalLossesEl) publicTotalLossesEl.textContent = losses.toString();
+    if (publicWinRateEl) publicWinRateEl.textContent = `${winRate}%`;
+    if (publicTotalMatchesEl) publicTotalMatchesEl.textContent = totalMatches.toString();
+
+    // Créer les graphiques pour le profil public
+    setTimeout(() => {
+      // Détruire les graphiques existants
+      if (publicWinLossChart) publicWinLossChart.destroy();
+      if (publicMatchTypesChart) publicMatchTypesChart.destroy();
+
+      // Créer les nouveaux graphiques
+      const publicWinLossCtx = document.getElementById('publicWinLossChart') as HTMLCanvasElement;
+      const publicMatchTypesCtx = document.getElementById('publicMatchTypesChart') as HTMLCanvasElement;
+
+      if (publicWinLossCtx) {
+        publicWinLossChart = createWinLossChart(publicWinLossCtx.getContext('2d'), wins, losses);
+      }
+      
+      if (publicMatchTypesCtx) {
+        publicMatchTypesChart = createMatchTypesChart(publicMatchTypesCtx.getContext('2d'), normalMatches.length, tournamentMatches.length);
+      }
+    }, 100);
+
+  } catch (error) {
+    console.error('Erreur lors du chargement des statistiques:', error);
+    statsDiv.textContent = 'Erreur lors du chargement des statistiques.';
+  }
+}
+
+async function renderPublicMatchHistory(userId: number) {
+  console.log('renderPublicMatchHistory called with userId:', userId);
+  const historyList = document.getElementById('public-profile-history-list');
+  if (!historyList) {
+    console.error('Element public-profile-history-list not found');
+    return;
+  }
+
+  try {
+    console.log('Fetching public match history for user:', userId);
+    const res = await fetch(`/api/matches/history/${userId}`, { credentials: 'include' });
+    console.log('Response status:', res.status);
+    
+    if (!res.ok) {
+      if (res.status === 403) {
+        historyList.textContent = 'Vous devez être ami avec cet utilisateur pour voir son historique.';
+      } else {
+        historyList.textContent = 'Erreur lors du chargement de l\'historique.';
+      }
+      return;
+    }
+
+    const matches = await res.json();
+    console.log('Matches data:', matches);
+    
+    if (matches.length === 0) {
+      historyList.textContent = 'Aucune partie jouée pour le moment.';
+      return;
+    }
+
+    historyList.innerHTML = matches.map((match: any) => {
+      const isWinner = match.isWinner;
+      const opponent = match.player1.id === userId ? match.player2 : match.player1;
+      const userScore = match.player1.id === userId ? match.player1Score : match.player2Score;
+      const opponentScore = match.player1.id === userId ? match.player2Score : match.player1Score;
+      
+      let matchTypeLabel = '';
+      if (match.matchType === 'TOURNAMENT_SEMI') {
+        matchTypeLabel = '<span class="text-yellow-400">Tournoi - Demi-finale</span>';
+      } else if (match.matchType === 'TOURNAMENT_FINAL') {
+        matchTypeLabel = '<span class="text-yellow-400">Tournoi - Finale</span>';
+      } else {
+        matchTypeLabel = '<span class="text-blue-400">Partie normale</span>';
+      }
+
+      return `
+        <div class="bg-gray-800 p-3 rounded mb-2">
+          <div class="flex justify-between items-center mb-2">
+            <div class="flex items-center">
+              <span class="font-semibold">vs ${opponent.displayName}    </span>
+              <img src="${opponent.avatar || '/avatars/default.png'}" class="w-8 h-8 rounded-full mr-2" alt="Avatar">
+            </div>
+            <div class="text-lg font-bold ${isWinner ? 'text-green-400' : 'text-red-400'}">
+              ${isWinner ? 'VICTOIRE' : 'DÉFAITE'}
+            </div>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-300">Score: ${userScore} - ${opponentScore}</span>
+            <span class="text-gray-400">${new Date(match.createdAt).toLocaleDateString()}</span>
+          </div>
+          <div class="mt-1">
+            ${matchTypeLabel}
+          </div>
         </div>
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-red-400 font-semibold">Défaites</h4>
-          <p class="text-2xl font-bold">${losses}</p>
-        </div>
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-blue-400 font-semibold">Taux de victoire</h4>
-          <p class="text-2xl font-bold">${winRate}%</p>
-        </div>
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-yellow-400 font-semibold">Total parties</h4>
-          <p class="text-2xl font-bold">${totalMatches}</p>
-        </div>
-      </div>
-      <div class="mt-4 grid grid-cols-2 gap-4">
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-purple-400 font-semibold">Parties normales</h4>
-          <p class="text-xl font-bold">${normalMatches.length}</p>
-        </div>
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-orange-400 font-semibold">Parties de tournoi</h4>
-          <p class="text-xl font-bold">${tournamentMatches.length}</p>
-        </div>
-      </div>
-    `;
+      `;
+    }).join('');
+
+    console.log('HTML content set to historyList');
 
   } catch (error) {
     console.error('Erreur lors du chargement de l\'historique:', error);
@@ -904,7 +1210,8 @@ if (tournamentSection) {
       target.textContent = 'En attente...';
       target.setAttribute('disabled', 'true');
       
-      const ws = new WebSocket('ws://localhost:8082');
+      // Use WSS via Nginx reverse proxy
+      const ws = new WebSocket(`wss://${location.host}/ws/tournament`);
       let gameWs: WebSocket | null = null;
       let playernumber: number | null = null;
       let gameState: any = null;
@@ -928,7 +1235,6 @@ if (tournamentSection) {
       ws.onmessage = async (event) => {
         const data = JSON.parse(event.data);
         if (data.type === 'update_slots') {
-          // Récupérer l'utilisateur actuel
           const userRes = await fetch('/api/me', { credentials: 'include' });
           let currentUserId = null;
           if (userRes.ok) {
@@ -945,13 +1251,10 @@ if (tournamentSection) {
             
             if (slotDiv && joinBtn) {
               if (data.slots[i-1]) {
-                // Slot occupé
                 slotDiv.textContent = data.slots[i-1];
                 joinBtn.style.display = 'none';
               } else {
-                // Slot libre
                 slotDiv.textContent = `Slot ${i}`;
-                // Afficher le bouton seulement si l'utilisateur n'a pas encore rejoint
                 if (!userAlreadyJoined) {
                   joinBtn.style.display = 'block';
                   joinBtn.textContent = 'Rejoindre';
@@ -1078,10 +1381,10 @@ if (tournamentSection) {
           if (!playernumber) return;
           let changed = false;
           if (playernumber === 1) {
-            if (e.key === 'ArrowUp' || e.key === 'z' || e.key === 'Z') { paddleY -= 10; changed = true; }
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { paddleY -= 10; changed = true; }
             if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { paddleY += 10; changed = true; }
           } else if (playernumber === 2) {
-            if (e.key === 'ArrowUp' || e.key === 'z' || e.key === 'Z') { paddleY -= 10; changed = true; }
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { paddleY -= 10; changed = true; }
             if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { paddleY += 10; changed = true; }
           }
           paddleY = Math.max(0, Math.min(canvas.height-paddleH, paddleY));
@@ -1188,7 +1491,6 @@ async function deleteMe() {
   if (!confirm('Are you sure? This will delete your account.')) return;
   const r = await fetch('/api/me', { method: 'DELETE', credentials: 'include' });
   alert(r.ok ? 'Deleted' : 'Failed');
-  // redirect to login / clear UI
 }
 
 
@@ -1236,6 +1538,8 @@ if (publicProfileSection) {
       });
       if (res.ok) {
         alert('Ami ajouté !');
+        target.classList.add('hidden');
+        target.removeAttribute('data-userid');
         if (!profileSection.classList.contains('hidden')) {
           renderFriendsList();
         }
@@ -1259,7 +1563,8 @@ function addLogoutButton() {
 
   document.querySelectorAll('#logout-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
-      await fetch('/api/logout', { method: 'POST' });
+      localStorage.clear();
+      await fetch('/api/logout', { method: 'POST', credentials: 'include' });
       showView('login');
     });
   });
